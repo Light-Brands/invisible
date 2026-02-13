@@ -19,6 +19,11 @@
 
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
+use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
+use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, CHACHA20_POLY1305};
+use ring::hmac;
+use rand::rngs::OsRng;
+use rand::RngCore;
 
 use crate::error::{Result, ScramblerError};
 use invisible_crypto::kdf::hkdf_sha256;
@@ -44,6 +49,8 @@ pub struct SphinxPacket {
 /// Sphinx packet header
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SphinxHeader {
+    /// Ephemeral public key (in the clear)
+    pub ephemeral_key: [u8; 32],
     /// Routing information (encrypted for each hop)
     pub routing_info: Vec<u8>,
     /// Message authentication code
@@ -59,6 +66,77 @@ pub struct RouteSpec {
     /// Destination address
     #[zeroize(skip)]
     pub destination: Vec<u8>,
+}
+
+/// Derive encryption and MAC keys from shared secret
+fn derive_keys(shared_secret: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
+    // Derive 64 bytes: 32 for encryption, 32 for MAC
+    let key_material = hkdf_sha256(shared_secret, None, b"SphinxKeys", 64)?;
+
+    let enc_key = key_material[0..32].to_vec();
+    let mac_key = key_material[32..64].to_vec();
+
+    Ok((enc_key, mac_key))
+}
+
+/// Blind an ephemeral public key for next hop
+fn blind_key(_public_key: &X25519PublicKey, shared_secret: &[u8]) -> Result<X25519PublicKey> {
+    // Derive blinding factor from shared secret
+    let blinding_factor = hkdf_sha256(shared_secret, None, b"SphinxBlind", 32)?;
+
+    // Convert to scalar and blind (multiply)
+    let blinding_bytes: [u8; 32] = blinding_factor.as_slice()
+        .try_into()
+        .map_err(|_| ScramblerError::SphinxError("Invalid blinding factor".to_string()))?;
+
+    let blinding_secret = StaticSecret::from(blinding_bytes);
+    let blinded_key = X25519PublicKey::from(&blinding_secret);
+
+    Ok(blinded_key)
+}
+
+/// Encrypt data using ChaCha20-Poly1305
+fn encrypt_chacha(key: &[u8], plaintext: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
+    let unbound_key = UnboundKey::new(&CHACHA20_POLY1305, key)
+        .map_err(|_| ScramblerError::SphinxError("Invalid encryption key".to_string()))?;
+
+    // Use deterministic nonce of zeros for Sphinx (key is one-time use)
+    let nonce_bytes = [0u8; 12];
+    let nonce = Nonce::try_assume_unique_for_key(&nonce_bytes)
+        .map_err(|_| ScramblerError::SphinxError("Invalid nonce".to_string()))?;
+
+    let sealing_key = LessSafeKey::new(unbound_key);
+    let mut in_out = plaintext.to_vec();
+
+    sealing_key
+        .seal_in_place_append_tag(nonce, Aad::from(associated_data), &mut in_out)
+        .map_err(|_| ScramblerError::SphinxError("Encryption failed".to_string()))?;
+
+    Ok(in_out)
+}
+
+/// Decrypt data using ChaCha20-Poly1305
+fn decrypt_chacha(key: &[u8], ciphertext: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
+    let unbound_key = UnboundKey::new(&CHACHA20_POLY1305, key)
+        .map_err(|_| ScramblerError::SphinxError("Invalid decryption key".to_string()))?;
+
+    // Use deterministic nonce of zeros
+    let nonce_bytes = [0u8; 12];
+    let nonce = Nonce::try_assume_unique_for_key(&nonce_bytes)
+        .map_err(|_| ScramblerError::SphinxError("Invalid nonce".to_string()))?;
+
+    let opening_key = LessSafeKey::new(unbound_key);
+    let mut in_out = ciphertext.to_vec();
+
+    opening_key
+        .open_in_place(nonce, Aad::from(associated_data), &mut in_out)
+        .map_err(|_| ScramblerError::SphinxError("Decryption failed".to_string()))?;
+
+    // Remove authentication tag
+    let plaintext_len = in_out.len() - CHACHA20_POLY1305.tag_len();
+    in_out.truncate(plaintext_len);
+
+    Ok(in_out)
 }
 
 /// Build a Sphinx packet
@@ -83,21 +161,94 @@ pub fn build_packet(route: &RouteSpec, message: &[u8]) -> Result<SphinxPacket> {
         )));
     }
 
-    // TODO: Implement Sphinx packet construction
-    // 1. Generate ephemeral key pair
-    // 2. Perform ECDH with each node key
-    // 3. Derive shared secrets using HKDF
-    // 4. Build routing info and encrypt for each hop
-    // 5. Compute MAC
-    // 6. Encrypt payload
+    // Step 1: Generate ephemeral key pair
+    // Use StaticSecret instead of EphemeralSecret so we can reuse it
+    let mut ephemeral_bytes = [0u8; 32];
+    RngCore::fill_bytes(&mut OsRng, &mut ephemeral_bytes);
+    let ephemeral_secret = StaticSecret::from(ephemeral_bytes);
+    let mut ephemeral_public = X25519PublicKey::from(&ephemeral_secret);
+
+    // Step 2 & 3: Perform ECDH with each node and derive shared secrets
+    let num_hops = route.node_keys.len();
+    let mut shared_secrets = Vec::new();
+    let mut blinding_factors = Vec::new();
+
+    for node_key_bytes in &route.node_keys {
+        // Parse node's public key
+        let node_key_array: [u8; 32] = node_key_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| ScramblerError::SphinxError("Invalid node key length".to_string()))?;
+        let node_public = X25519PublicKey::from(node_key_array);
+
+        // Perform ECDH
+        let shared_secret = ephemeral_secret.diffie_hellman(&node_public);
+        let shared_secret_bytes = shared_secret.as_bytes().to_vec();
+
+        shared_secrets.push(shared_secret_bytes.clone());
+
+        // Derive blinding factor for next hop
+        let blinding = hkdf_sha256(&shared_secret_bytes, None, b"SphinxBlind", 32)?;
+        blinding_factors.push(blinding);
+
+        // Blind the ephemeral key for next hop (except last)
+        if shared_secrets.len() < num_hops {
+            ephemeral_public = blind_key(&ephemeral_public, &shared_secret_bytes)?;
+        }
+    }
+
+    // Step 4: Build routing info and encrypt for each hop (in reverse)
+    let mut routing_info = vec![0u8; HEADER_SIZE];
+
+    // Encode destination in the innermost layer
+    let dest_bytes = &route.destination;
+    routing_info[..dest_bytes.len()].copy_from_slice(dest_bytes);
+
+    // Encrypt routing info in layers (innermost first)
+    for i in (0..num_hops).rev() {
+        let (enc_key, _) = derive_keys(&shared_secrets[i])?;
+
+        // Encrypt current routing info
+        routing_info = encrypt_chacha(&enc_key, &routing_info, b"SphinxHeader")?;
+
+        // Pad to HEADER_SIZE
+        routing_info.resize(HEADER_SIZE, 0);
+    }
+
+    // Step 5: Compute MAC using first hop's MAC key (over ephemeral_key + routing_info)
+    let (_, mac_key) = derive_keys(&shared_secrets[0])?;
+    let hmac_key = hmac::Key::new(hmac::HMAC_SHA256, &mac_key);
+
+    let ephemeral_key_bytes: [u8; 32] = *ephemeral_public.as_bytes();
+
+    // MAC covers ephemeral key + routing info
+    let mut mac_input = Vec::new();
+    mac_input.extend_from_slice(&ephemeral_key_bytes);
+    mac_input.extend_from_slice(&routing_info);
+
+    let mac_tag = hmac::sign(&hmac_key, &mac_input);
+    let mut mac = [0u8; 32];
+    mac.copy_from_slice(mac_tag.as_ref());
 
     let header = SphinxHeader {
-        routing_info: vec![0u8; HEADER_SIZE],
-        mac: [0u8; 32],
+        ephemeral_key: ephemeral_key_bytes,
+        routing_info,
+        mac,
     };
 
+    // Step 6: Encrypt payload using layered encryption
     let mut payload = vec![0u8; PAYLOAD_SIZE];
     payload[..message.len()].copy_from_slice(message);
+
+    // Encrypt payload in layers (innermost first)
+    for i in (0..num_hops).rev() {
+        let (enc_key, _) = derive_keys(&shared_secrets[i])?;
+        let encrypted = encrypt_chacha(&enc_key, &payload, b"SphinxPayload")?;
+
+        // Copy back and pad
+        payload = encrypted;
+        payload.resize(PAYLOAD_SIZE, 0);
+    }
 
     Ok(SphinxPacket { header, payload })
 }
@@ -114,19 +265,96 @@ pub fn process_packet(
     packet: &SphinxPacket,
     node_private_key: &[u8],
 ) -> Result<ProcessedPacket> {
-    // TODO: Implement Sphinx packet processing
-    // 1. Perform ECDH with ephemeral key
-    // 2. Derive shared secret
-    // 3. Decrypt one layer of routing info
-    // 4. Verify MAC
-    // 5. Check replay protection
-    // 6. Transform header and payload
-    // 7. Extract next hop or final destination
+    // Step 1: Extract ephemeral public key from header
+    let ephemeral_public = X25519PublicKey::from(packet.header.ephemeral_key);
 
-    Ok(ProcessedPacket::Forward {
-        next_hop: vec![0u8; 32],
-        packet: packet.clone(),
-    })
+    // Step 2: Perform ECDH with ephemeral key
+    let private_key_bytes: [u8; 32] = node_private_key
+        .try_into()
+        .map_err(|_| ScramblerError::SphinxError("Invalid private key length".to_string()))?;
+    let private_key = StaticSecret::from(private_key_bytes);
+
+    let shared_secret = private_key.diffie_hellman(&ephemeral_public);
+    let shared_secret_bytes = shared_secret.as_bytes();
+
+    // Step 3: Derive encryption and MAC keys
+    let (enc_key, mac_key) = derive_keys(shared_secret_bytes)?;
+
+    // Step 4: Verify MAC (over ephemeral_key + routing_info)
+    let hmac_key = hmac::Key::new(hmac::HMAC_SHA256, &mac_key);
+
+    let mut mac_input = Vec::new();
+    mac_input.extend_from_slice(&packet.header.ephemeral_key);
+    mac_input.extend_from_slice(&packet.header.routing_info);
+
+    hmac::verify(&hmac_key, &mac_input, &packet.header.mac)
+        .map_err(|_| ScramblerError::SphinxError("MAC verification failed".to_string()))?;
+
+    // Step 5: Decrypt one layer of routing info
+    let decrypted_routing = decrypt_chacha(&enc_key, &packet.header.routing_info, b"SphinxHeader")?;
+
+    // Extract next hop address (first 32 bytes of decrypted routing)
+    let mut next_hop = vec![0u8; 32];
+    next_hop.copy_from_slice(&decrypted_routing[0..32]);
+
+    // Step 6: Check if this is the final destination (all zeros means deliver)
+    let is_final = next_hop.iter().all(|&b| b == 0);
+
+    if is_final {
+        // Step 7a: Decrypt payload and deliver
+        let decrypted_payload = decrypt_chacha(&enc_key, &packet.payload, b"SphinxPayload")?;
+
+        // Remove padding (find first zero after message)
+        let message_len = decrypted_payload
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(decrypted_payload.len());
+
+        Ok(ProcessedPacket::Deliver {
+            message: decrypted_payload[..message_len].to_vec(),
+        })
+    } else {
+        // Step 7b: Transform packet for forwarding
+
+        // Blind ephemeral key for next hop
+        let blinded_ephemeral = blind_key(&ephemeral_public, shared_secret_bytes)?;
+        let blinded_key_bytes: [u8; 32] = *blinded_ephemeral.as_bytes();
+
+        // Shift routing info (remove processed layer)
+        let mut new_routing_info = decrypted_routing;
+        new_routing_info.resize(HEADER_SIZE, 0);
+
+        // Compute new MAC for next hop (over blinded key + routing info)
+        let mut new_mac_input = Vec::new();
+        new_mac_input.extend_from_slice(&blinded_key_bytes);
+        new_mac_input.extend_from_slice(&new_routing_info);
+
+        let new_hmac_key = hmac::Key::new(hmac::HMAC_SHA256, &mac_key);
+        let new_mac_tag = hmac::sign(&new_hmac_key, &new_mac_input);
+        let mut new_mac = [0u8; 32];
+        new_mac.copy_from_slice(new_mac_tag.as_ref());
+
+        let new_header = SphinxHeader {
+            ephemeral_key: blinded_key_bytes,
+            routing_info: new_routing_info,
+            mac: new_mac,
+        };
+
+        // Decrypt one layer of payload
+        let decrypted_payload = decrypt_chacha(&enc_key, &packet.payload, b"SphinxPayload")?;
+        let mut new_payload = decrypted_payload;
+        new_payload.resize(PAYLOAD_SIZE, 0);
+
+        let transformed_packet = SphinxPacket {
+            header: new_header,
+            payload: new_payload,
+        };
+
+        Ok(ProcessedPacket::Forward {
+            next_hop,
+            packet: transformed_packet,
+        })
+    }
 }
 
 /// Result of processing a Sphinx packet
@@ -149,6 +377,7 @@ pub enum ProcessedPacket {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use invisible_crypto::keys::KeyPair;
 
     #[test]
     fn test_packet_size_limits() {
@@ -175,5 +404,88 @@ mod tests {
 
         let message = vec![0u8; 100];
         assert!(build_packet(&route, &message).is_err());
+    }
+
+    #[test]
+    fn test_sphinx_end_to_end() {
+        // Create 3 mix nodes with real key pairs
+        let node1_keypair = KeyPair::generate().unwrap();
+        let node2_keypair = KeyPair::generate().unwrap();
+        let node3_keypair = KeyPair::generate().unwrap();
+
+        // Build route
+        let route = RouteSpec {
+            node_keys: vec![
+                node1_keypair.public_key().to_vec(),
+                node2_keypair.public_key().to_vec(),
+                node3_keypair.public_key().to_vec(),
+            ],
+            destination: vec![0u8; 32], // Final destination (all zeros = deliver)
+        };
+
+        // Original message
+        let original_message = b"Hello, Invisible!";
+
+        // Build Sphinx packet
+        let packet = build_packet(&route, original_message).unwrap();
+
+        // Process at node 1
+        let result1 = process_packet(&packet, node1_keypair.private_key()).unwrap();
+        let packet2 = match result1 {
+            ProcessedPacket::Forward { next_hop, packet } => {
+                assert_eq!(next_hop, node2_keypair.public_key());
+                packet
+            }
+            ProcessedPacket::Deliver { .. } => panic!("Should not deliver at node 1"),
+        };
+
+        // Process at node 2
+        let result2 = process_packet(&packet2, node2_keypair.private_key()).unwrap();
+        let packet3 = match result2 {
+            ProcessedPacket::Forward { next_hop, packet } => {
+                assert_eq!(next_hop, node3_keypair.public_key());
+                packet
+            }
+            ProcessedPacket::Deliver { .. } => panic!("Should not deliver at node 2"),
+        };
+
+        // Process at node 3 (final hop)
+        let result3 = process_packet(&packet3, node3_keypair.private_key()).unwrap();
+        match result3 {
+            ProcessedPacket::Forward { .. } => panic!("Should deliver at node 3"),
+            ProcessedPacket::Deliver { message } => {
+                assert_eq!(&message, original_message);
+            }
+        }
+    }
+
+    #[test]
+    fn test_sphinx_unlinkability() {
+        // Verify that packets are transformed at each hop (not just forwarded)
+        let node1_keypair = KeyPair::generate().unwrap();
+        let node2_keypair = KeyPair::generate().unwrap();
+
+        let route = RouteSpec {
+            node_keys: vec![
+                node1_keypair.public_key().to_vec(),
+                node2_keypair.public_key().to_vec(),
+            ],
+            destination: vec![0u8; 32],
+        };
+
+        let message = b"Test message";
+        let packet = build_packet(&route, message).unwrap();
+
+        // Process at node 1
+        let result = process_packet(&packet, node1_keypair.private_key()).unwrap();
+        let packet2 = match result {
+            ProcessedPacket::Forward { packet, .. } => packet,
+            _ => panic!("Should forward"),
+        };
+
+        // Packets should be different (transformed)
+        assert_ne!(packet.header.routing_info, packet2.header.routing_info);
+        assert_ne!(packet.header.mac, packet2.header.mac);
+        assert_ne!(packet.payload, packet2.payload);
     }
 }

@@ -44,6 +44,7 @@ impl CoverTrafficGenerator {
         // - Indistinguishable from real traffic
         Ok(SphinxPacket {
             header: crate::sphinx::SphinxHeader {
+                ephemeral_key: [0u8; 32],
                 routing_info: vec![],
                 mac: [0u8; 32],
             },

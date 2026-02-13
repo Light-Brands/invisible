@@ -12,6 +12,7 @@ invisible-crypto = { path = "../crypto" }
 ring = { workspace = true }
 zeroize = { workspace = true }
 subtle = { workspace = true }
+x25519-dalek = { workspace = true }
 
 # Networking
 tokio = { workspace = true }

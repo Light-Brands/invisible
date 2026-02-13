@@ -218,6 +218,7 @@ mod tests {
         for _ in 0..10 {
             state.add_packet(SphinxPacket {
                 header: crate::sphinx::SphinxHeader {
+                    ephemeral_key: [0u8; 32],
                     routing_info: vec![],
                     mac: [0u8; 32],
                 },

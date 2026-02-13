@@ -3,7 +3,6 @@
 //! Poisson-distributed random delays to prevent timing correlation attacks.
 
 use std::time::Duration;
-use crate::error::Result;
 
 /// Temporal delay configuration
 #[derive(Debug, Clone)]

@@ -12,9 +12,12 @@ ring = { workspace = true }
 argon2 = { workspace = true }
 zeroize = { workspace = true }
 subtle = { workspace = true }
-
-# Signal Protocol (will need to add libsignal-protocol)
-# For now, implementing from scratch using ring
+x25519-dalek = { workspace = true }
+ed25519-dalek = { workspace = true }
+curve25519-dalek = { workspace = true }
+sha2 = { workspace = true }
+hmac = { workspace = true }
+blake3 = { workspace = true }
 
 # Serialization
 serde = { workspace = true }

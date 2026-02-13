@@ -3,8 +3,9 @@
 //! Implements Ed25519 keys for identity and X25519 keys for encryption.
 //! All sensitive key material is zeroized on drop.
 
-use ring::rand::{SecureRandom, SystemRandom};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
+use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret as X25519Secret};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::error::{CryptoError, Result};
@@ -29,18 +30,41 @@ pub struct KeyPair {
 }
 
 impl KeyPair {
-    /// Generate a new random key pair
+    /// Generate a new random key pair using X25519
     pub fn generate() -> Result<Self> {
-        let rng = SystemRandom::new();
-        let mut private = vec![0u8; X25519_KEY_SIZE];
-        rng.fill(&mut private)
-            .map_err(|e| CryptoError::CryptoError(format!("RNG failed: {:?}", e)))?;
+        use rand::rngs::OsRng;
 
-        // For X25519, public key is derived from private key
-        // TODO: Implement actual X25519 key derivation
-        let public = private.clone(); // Placeholder
+        // Generate X25519 private key
+        let private_key = X25519Secret::random_from_rng(OsRng);
 
-        Ok(Self { public, private })
+        // Derive public key
+        let public_key = X25519PublicKey::from(&private_key);
+
+        Ok(Self {
+            public: public_key.as_bytes().to_vec(),
+            private: private_key.to_bytes().to_vec(),
+        })
+    }
+
+    /// Perform Diffie-Hellman key agreement
+    pub fn dh(&self, their_public: &[u8]) -> Result<Vec<u8>> {
+        // Reconstruct our private key
+        let private_bytes: [u8; 32] = self.private
+            .as_slice()
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid private key length".to_string()))?;
+        let private_key = X25519Secret::from(private_bytes);
+
+        // Parse their public key
+        let public_bytes: [u8; 32] = their_public
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid public key length".to_string()))?;
+        let their_public_key = X25519PublicKey::from(public_bytes);
+
+        // Perform DH
+        let shared_secret = private_key.diffie_hellman(&their_public_key);
+
+        Ok(shared_secret.as_bytes().to_vec())
     }
 
     /// Get the public key
@@ -65,13 +89,57 @@ pub struct IdentityKey {
 }
 
 impl IdentityKey {
-    /// Generate a new identity key
+    /// Generate a new identity key using Ed25519
     pub fn generate() -> Result<Self> {
-        let key_pair = KeyPair::generate()?;
+        use rand::rngs::OsRng;
+
+        // Generate Ed25519 signing key
+        let signing_key = SigningKey::generate(&mut OsRng);
+        let verifying_key = signing_key.verifying_key();
+
         Ok(Self {
-            public: key_pair.public_key().to_vec(),
-            private: Some(key_pair.private_key().to_vec()),
+            public: verifying_key.to_bytes().to_vec(),
+            private: Some(signing_key.to_bytes().to_vec()),
         })
+    }
+
+    /// Sign a message
+    pub fn sign(&self, message: &[u8]) -> Result<Vec<u8>> {
+        let private = self.private.as_ref()
+            .ok_or_else(|| CryptoError::InvalidKey("No private key available".to_string()))?;
+
+        let signing_key_bytes: [u8; 32] = private
+            .as_slice()
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid private key length".to_string()))?;
+
+        let signing_key = SigningKey::from_bytes(&signing_key_bytes);
+        let signature = signing_key.sign(message);
+
+        Ok(signature.to_bytes().to_vec())
+    }
+
+    /// Verify a signature
+    pub fn verify(&self, message: &[u8], signature: &[u8]) -> Result<()> {
+        let verifying_key_bytes: [u8; 32] = self.public
+            .as_slice()
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid public key length".to_string()))?;
+
+        let verifying_key = VerifyingKey::from_bytes(&verifying_key_bytes)
+            .map_err(|e| CryptoError::InvalidKey(format!("Invalid public key: {}", e)))?;
+
+        let signature_bytes: [u8; 64] = signature
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid signature length".to_string()))?;
+
+        let signature = Signature::from_bytes(&signature_bytes);
+
+        verifying_key
+            .verify(message, &signature)
+            .map_err(|_| CryptoError::SignatureVerificationFailed)?;
+
+        Ok(())
     }
 
     /// Create from public key only (for remote identities)
@@ -108,10 +176,11 @@ pub struct SignedPreKey {
 
 impl SignedPreKey {
     /// Generate a new signed pre-key
-    pub fn generate(id: u32) -> Result<Self> {
+    pub fn generate(id: u32, identity_key: &IdentityKey) -> Result<Self> {
         let key_pair = KeyPair::generate()?;
-        // TODO: Actually sign with identity key
-        let signature = vec![0u8; 64]; // Placeholder
+
+        // Sign the public key with identity key
+        let signature = identity_key.sign(key_pair.public_key())?;
 
         Ok(Self {
             key_pair,
@@ -122,6 +191,11 @@ impl SignedPreKey {
                 .unwrap()
                 .as_secs(),
         })
+    }
+
+    /// Verify the signature on this pre-key
+    pub fn verify(&self, identity_key: &IdentityKey) -> Result<()> {
+        identity_key.verify(self.key_pair.public_key(), &self.signature)
     }
 
     /// Get the key ID

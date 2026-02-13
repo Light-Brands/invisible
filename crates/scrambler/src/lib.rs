@@ -32,5 +32,6 @@ pub mod mixnet;
 pub mod cover_traffic;
 pub mod shamir;
 pub mod temporal;
+pub mod vpn;
 
 pub use error::{ScramblerError, Result};

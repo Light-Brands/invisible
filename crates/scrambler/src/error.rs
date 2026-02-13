@@ -43,6 +43,10 @@ pub enum ScramblerError {
     /// Configuration error
     #[error("Configuration error: {0}")]
     ConfigError(String),
+
+    /// VPN connection error
+    #[error("VPN error: {0}")]
+    VpnError(String),
 }
 
 impl From<invisible_crypto::CryptoError> for ScramblerError {

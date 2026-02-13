@@ -7,52 +7,41 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-# Core crypto
+# Internal dependencies
 invisible-crypto = { path = "../crypto" }
+invisible-scrambler = { path = "../scrambler" }
 
-# Cryptocurrency libraries (optional for now, will add real implementations later)
-# Monero
-# monero = "0.18"
-# monero-rpc = "0.4"
-
-# Zcash
-# zcash_primitives = "0.13"
-# zcash_client_backend = "0.10"
+# Crypto primitives
+ring = { workspace = true }
+zeroize = { workspace = true }
 
 # Bitcoin
 bitcoin = "0.31"
-# bitcoincore-rpc = "0.18"
 
-# Ethereum
-# ethers = "2.0"
-
-# HD wallets (BIP32/39/44)
-bip32 = "0.5"
-bip39 = { version = "2.0", features = ["rand"] }
+# Monero (placeholder - actual monero crate would go here)
+# monero = "0.20"
 
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
+bincode = { workspace = true }
 
-# Cryptography
-zeroize = { workspace = true }
-ring = { workspace = true }
+# Async
+tokio = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 
-# Async
-tokio = { workspace = true }
-
-# Utilities
-uuid = { version = "1.6", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-
 # Logging
 tracing = { workspace = true }
 
+# Utilities
+rand = "0.8"
+hex = "0.4"
+
 [dev-dependencies]
+tokio-test = "0.4"
 proptest = { workspace = true }
 
 [lib]

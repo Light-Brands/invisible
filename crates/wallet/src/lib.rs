@@ -1,19 +1,20 @@
-//! # Shadow Wallet
+//! # Invisible Shadow Wallet
 //!
-//! Privacy-first cryptocurrency wallet supporting:
-//! - Monero (XMR) - Privacy by default
-//! - Zcash (ZEC) - Shielded transactions
-//! - Bitcoin (BTC) - CoinJoin support
-//! - Ethereum (ETH) - Privacy proxy
+//! Non-custodial, privacy-first cryptocurrency wallet.
 //!
-//! ## Privacy Features
+//! ## Supported Currencies
 //!
-//! - **Non-custodial:** User controls keys
-//! - **Privacy Parity:** Same network obfuscation as messages
-//! - **CoinJoin:** Bitcoin mixing for privacy
-//! - **Atomic Swaps:** Cross-chain without intermediaries
-//! - **DeFi Integration:** WalletConnect v2 with RPC proxy
-//! - **Panic Wipe:** Duress PIN destroys wallet data
+//! - **XMR (Monero):** Privacy by default
+//! - **ZEC (Zcash):** Shielded transactions  
+//! - **BTC (Bitcoin):** CoinJoin mixing
+//! - **ETH (Ethereum):** Tornado Cash integration
+//!
+//! ## Features
+//!
+//! - **Non-Custodial:** Users control private keys
+//! - **Privacy Parity:** All transactions use privacy features
+//! - **Atomic Swaps:** Cross-chain via HTLC
+//! - **WalletConnect:** DeFi integration
 
 #![forbid(unsafe_code)]
 #![warn(
@@ -24,14 +25,9 @@
 )]
 
 pub mod error;
-pub mod types;
-pub mod hd_wallet;
-pub mod monero;
-pub mod zcash;
-pub mod bitcoin;
-pub mod ethereum;
-pub mod swap;
+pub mod wallet;
+pub mod btc;
+pub mod xmr;
 
 pub use error::{WalletError, Result};
-pub use types::{Currency, Balance, Transaction};
-pub use hd_wallet::HDWallet;
+pub use wallet::{ShadowWallet, WalletConfig, Balance};

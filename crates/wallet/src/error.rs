@@ -1,56 +1,37 @@
-//! Error types for wallet operations
+//! Error types for Shadow Wallet
 
 use thiserror::Error;
 
 /// Result type for wallet operations
 pub type Result<T> = std::result::Result<T, WalletError>;
 
-/// Errors that can occur in wallet operations
+/// Wallet errors
 #[derive(Error, Debug)]
 pub enum WalletError {
-    /// Cryptographic operation failed
-    #[error("Crypto error: {0}")]
-    CryptoError(String),
+    /// Insufficient balance
+    #[error("Insufficient balance: need {needed}, have {available}")]
+    InsufficientBalance {
+        /// Amount needed
+        needed: u64,
+        /// Amount available
+        available: u64,
+    },
 
-    /// Key derivation failed
-    #[error("Key derivation error: {0}")]
-    KeyDerivationError(String),
-
-    /// Invalid mnemonic phrase
-    #[error("Invalid mnemonic: {0}")]
-    InvalidMnemonic(String),
-
-    /// Invalid address format
+    /// Invalid address
     #[error("Invalid address: {0}")]
     InvalidAddress(String),
 
-    /// Insufficient balance
-    #[error("Insufficient balance: have {have}, need {need}")]
-    InsufficientBalance { have: String, need: String },
-
     /// Transaction failed
-    #[error("Transaction error: {0}")]
-    TransactionError(String),
+    #[error("Transaction failed: {0}")]
+    TransactionFailed(String),
 
     /// Network error
     #[error("Network error: {0}")]
     NetworkError(String),
 
-    /// RPC error
-    #[error("RPC error: {0}")]
-    RpcError(String),
-
-    /// Storage error
-    #[error("Storage error: {0}")]
-    StorageError(String),
-
-    /// Swap error
-    #[error("Swap error: {0}")]
-    SwapError(String),
-
-    /// Unsupported currency
-    #[error("Unsupported currency: {0}")]
-    UnsupportedCurrency(String),
+    /// Cryptographic error
+    #[error("Crypto error: {0}")]
+    CryptoError(String),
 
     /// Configuration error
     #[error("Configuration error: {0}")]

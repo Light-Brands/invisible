@@ -1,0 +1,60 @@
+[package]
+name = "invisible-wallet"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Core crypto
+invisible-crypto = { path = "../crypto" }
+
+# Cryptocurrency libraries
+# Monero
+monero = "0.20"
+monero-rpc = "0.20"
+
+# Zcash
+zcash_primitives = "0.13"
+zcash_client_backend = "0.11"
+
+# Bitcoin
+bitcoin = "0.31"
+bitcoincore-rpc = "0.18"
+
+# Ethereum
+ethers = "2.0"
+
+# HD wallets (BIP32/39/44)
+bip32 = "0.5"
+bip39 = { version = "2.0", features = ["rand"] }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Cryptography
+zeroize = { workspace = true }
+ring = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[lib]
+name = "invisible_wallet"
+path = "src/lib.rs"

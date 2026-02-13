@@ -67,6 +67,7 @@ pub enum VpnState {
 }
 
 /// VPN connection manager
+#[derive(Debug)]
 pub struct VpnManager {
     /// Current configuration
     config: VpnConfig,
@@ -172,7 +173,7 @@ impl VpnManager {
         self.failure_count += 1;
 
         // Calculate exponential backoff: 1s, 2s, 4s, 8s, ... up to 60s
-        self.backoff = Duration::from_secs((1u64 << self.failure_count.min(6)));
+        self.backoff = Duration::from_secs(1u64 << self.failure_count.min(6));
         
         tracing::warn!(
             failures = self.failure_count,

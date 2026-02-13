@@ -1,8 +1,657 @@
-# Invisible — Project Plan
+# Invisible — Comprehensive Project Plan
 
-**Version:** 1.0.0
+**Version:** 2.0.0
 **Created:** 2026-02-12
-**Status:** Planning
+**Updated:** 2026-02-13
+**Status:** Active Development Planning
+
+---
+
+## Executive Summary
+
+**Mission:** Build the world's most private messenger with zero-compromise privacy and maximum usability. Every feature—from messaging to payments—protected by 7-layer network obfuscation, with user experience so intuitive that privacy becomes invisible.
+
+**Scope:**
+- **Timeline:** 88 weeks across 7 phases
+- **Team:** 25-40 person comprehensive team with specialized roles
+- **Deliverable:** Production-ready Invisible messenger with mobile apps, relay infrastructure, and community node network
+
+**Approach:**
+- **Design-Driven Development:** UX/UI team leads feature design 6 weeks ahead of engineering. No code until designs are validated with users.
+- **Continuous Security Validation:** Security testing in every 2-week sprint, not just at phase boundaries. Red team continuously attacks the system.
+- **Sprint-Based Execution:** 2-week sprint cycles with clear deliverables, team assignments, and success criteria.
+- **Deployment Automation:** Production-ready infrastructure from day one with CI/CD pipelines and reproducible builds.
+
+**Key Principles:**
+- **Privacy Parity:** Messages and money receive equal protection—full 7-layer Scrambler for all operations
+- **UX Obsession:** If users can't figure it out in 30 seconds, we failed
+- **Security First:** Every decision starts with "What does an adversary learn?"
+- **Defense in Depth:** Multiple independent security layers—an adversary must defeat ALL simultaneously
+- **Open Everything:** All code, protocols, and crypto implementations are open source with reproducible builds
+
+---
+
+## Table of Contents
+
+**Planning & Process**
+1. [Executive Summary](#executive-summary)
+2. [Team Structure & Roles](#team-structure--roles-25-40-people)
+3. [Development Workflow & Sprint Process](#development-workflow--sprint-process)
+4. [UX/UI Design-Driven Development](#uxui-design-driven-development)
+5. [Security & QA Continuous Validation](#security--qa-continuous-validation)
+6. [Deployment & Infrastructure Strategy](#deployment--infrastructure-strategy)
+7. [Communication & Collaboration](#communication--collaboration)
+8. [Technology Stack & Tools](#technology-stack--tools)
+
+**Phase Execution**
+9. [Phase 0: Foundation (Weeks 1-8)](#phase-0-foundation-weeks-1-8)
+10. [Phase 1: Core Messaging (Weeks 9-16)](#phase-1-core-messaging-weeks-9-16)
+11. [Phase 2: The Scrambler (Weeks 17-28)](#phase-2-the-scrambler-weeks-17-28)
+12. [Phase 3: Ghost VPN + Hardening (Weeks 29-36)](#phase-3-ghost-vpn--hardening-weeks-29-36)
+13. [Phase 4: Groups + Media + Calls (Weeks 37-48)](#phase-4-groups--media--calls-weeks-37-48)
+14. [Phase 5: Shadow Wallet + Crypto (Weeks 49-64)](#phase-5-shadow-wallet--crypto-weeks-49-64)
+15. [Phase 6: Mesh + Community Nodes (Weeks 65-76)](#phase-6-mesh--community-nodes-weeks-65-76)
+16. [Phase 7: Audit + Launch (Weeks 77-88)](#phase-7-audit--launch-weeks-77-88)
+
+**Supporting Information**
+17. [Dependencies](#dependencies)
+18. [Success Metrics & Monitoring](#success-metrics--monitoring)
+19. [Risk Management & Mitigation](#risk-management--mitigation)
+20. [Shadow Wallet Security Hardening](#shadow-wallet-security-hardening)
+21. [Network Privacy Mode](#network-privacy-mode-cellular-metadata-protection)
+22. [Admin Dashboard](#admin-dashboard-privacy-control-center)
+
+---
+
+## Team Structure & Roles (25-40 People)
+
+**Team philosophy:** Specialized excellence over generalist coverage. Each domain (crypto, mobile, backend, wallet, design, security, DevOps) has dedicated experts who own their area end-to-end.
+
+### Core Leadership (4 people)
+
+**Product Lead** (1)
+- Responsibilities: Vision, roadmap, stakeholder alignment, prioritization
+- Key Skills: Product strategy, user empathy, technical fluency
+- Reports To: CEO/Founders
+
+**Technical Architect** (1)
+- Responsibilities: System design, technical decisions, security architecture, cross-team technical alignment
+- Key Skills: Distributed systems, cryptography, threat modeling
+- Reports To: CEO/Founders
+
+**UX/UI Design Lead** (1)
+- Responsibilities: Design vision, user research, design system ownership, design team management
+- Key Skills: User research, interaction design, accessibility, design systems
+- Reports To: Product Lead
+
+**Engineering Lead** (1)
+- Responsibilities: Team coordination, code quality, technical mentorship, process optimization
+- Key Skills: People management, architecture review, delivery optimization
+- Reports To: Technical Architect
+
+---
+
+### Engineering Teams (18-22 people)
+
+#### Cryptography & Core Team (4-5)
+
+**Team Mission:** Build and maintain the cryptographic foundation—Signal Protocol, post-quantum crypto, key management, and core security primitives.
+
+**Roles:**
+- **Rust Engineers** (2): Signal Protocol Double Ratchet, X3DH, PQXDH, Ed25519 signatures
+- **Security Engineer** (1): Crypto validation, threat modeling, constant-time operations review
+- **Performance Engineer** (1): Benchmark crypto operations, optimize hot paths, memory profiling
+- **Test Engineer** (1): Property testing, fuzzing, known-answer tests (NIST vectors)
+
+**Key Responsibilities:**
+- Implement and maintain libsignal-protocol integration
+- Post-quantum key exchange (ML-KEM + X25519 hybrid)
+- Local storage encryption (SQLCipher + Argon2id KDF)
+- Daily key rotation system
+- All crypto code must achieve 100% branch coverage with property tests
+
+---
+
+#### Mobile Team (5-6)
+
+**Team Mission:** Build beautiful, intuitive Flutter mobile apps for iOS and Android that make privacy invisible to users.
+
+**Roles:**
+- **Flutter Engineers** (3): Cross-platform mobile development, state management, UI implementation
+- **iOS Platform Specialist** (1): Native iOS integration (Secure Enclave, biometrics, permissions)
+- **Android Platform Specialist** (1): Native Android integration (StrongBox, biometrics, permissions)
+- **Mobile QA Engineer** (1): Device testing, platform-specific bugs, accessibility testing
+
+**Key Responsibilities:**
+- Flutter mobile app development (iOS/Android)
+- Native platform integration (biometrics, hardware security modules)
+- Implement designs from UX team with pixel-perfect accuracy
+- Performance optimization (battery usage, startup time, memory)
+- Anti-forensic features (no thumbnails, blank task switcher, secure keyboard)
+
+---
+
+#### Backend/Infrastructure Team (5-6)
+
+**Team Mission:** Build the relay, mixnet, and VPN infrastructure that provides unbreakable network privacy.
+
+**Roles:**
+- **Rust Engineers** (3): Relay nodes, mixnet implementation (Sphinx packets, Loopix), VPN integration
+- **Network Engineer** (1): Protocol design, performance optimization, bandwidth efficiency
+- **Database Engineer** (1): SQLCipher schema design, data models, migration strategy
+- **Infrastructure Automation Engineer** (1): Terraform, Ansible, Docker, Kubernetes deployment
+
+**Key Responsibilities:**
+- Relay node software (RAM-only, stateless)
+- 7-layer Scrambler implementation (Shamir fragmentation, 5-layer mixnet, cover traffic, etc.)
+- Ghost VPN integration (WireGuard, endpoint rotation)
+- Dead drop architecture (anonymous message mailboxes)
+- Node deployment automation (one-click community setup)
+
+---
+
+#### Wallet/DeFi Team (4-5)
+
+**Team Mission:** Build Shadow Wallet—a non-custodial, privacy-first crypto wallet with fortress-grade security.
+
+**Roles:**
+- **Blockchain Engineers** (2): Monero, Zcash, Bitcoin, Ethereum integration
+- **Smart Contract Security Engineer** (1): DeFi proxy security, contract verification, approval limits
+- **DeFi Integration Engineer** (1): WalletConnect v2, RPC proxy, swap protocols
+- **Wallet QA Engineer** (1): Security testing, transaction validation, recovery testing
+
+**Key Responsibilities:**
+- Privacy coin integration (Monero, Zcash, Bitcoin with CoinJoin/PayJoin)
+- Ethereum + stablecoin support (ZK-rollup privacy layers)
+- Phantom Swap (atomic cross-chain swaps via HTLC)
+- Anonymous DeFi proxy (WalletConnect through Scrambler)
+- Hardware security module integration (Secure Enclave, StrongBox)
+- Transaction verification layer (anti-phishing, address validation)
+
+---
+
+### Design & UX Team (5-6 people)
+
+**Team Mission:** Lead feature design 6 weeks ahead of engineering. Ensure every feature is so intuitive that users understand it in 30 seconds.
+
+**Roles:**
+- **UX/UI Design Lead** (1): Design vision, design system ownership (also in Core Leadership)
+- **Product Designers** (2): User flows, wireframes, high-fidelity prototypes, user testing
+- **Visual Designer** (1): Design system components, UI polish, iconography, animations
+- **UX Researcher** (1): User interviews, usability testing, validation studies, competitive analysis
+- **Accessibility Specialist** (1): WCAG 2.1 AA compliance, screen reader optimization, inclusive design
+
+**Key Responsibilities:**
+- Conduct user research (interviews with journalists, activists, privacy-conscious users)
+- Create and validate designs 6 weeks before engineering starts
+- Build and maintain comprehensive design system (Figma)
+- User testing (8-10 sessions per feature)
+- Design QA on every engineering implementation
+- Accessibility audits at every phase boundary
+
+**The UX Obsession:**
+- If users can't figure out a feature in 30 seconds, it failed
+- Privacy features must be invisible (automatic) or obvious (one tap)
+- Error messages must be helpful, never technical
+- Every screen answers: "Where am I? What can I do? What happens next?"
+
+---
+
+### Security & QA (4-5 people)
+
+**Team Mission:** Continuously attack the system to find vulnerabilities before adversaries do. Ensure every feature meets fortress-grade security standards.
+
+**Roles:**
+- **Security Lead** (1): Red team operations, penetration testing, threat modeling leadership
+- **Security Engineers** (2): Code review (crypto/wallet/network), security audits, threat modeling
+- **QA Lead** (1): Test strategy, automation framework design, release validation
+- **QA Engineer** (1): Integration testing, end-to-end testing, regression testing
+
+**Key Responsibilities:**
+- Security code review (2 security engineers for all crypto/wallet code)
+- Threat modeling sessions (every sprint)
+- Penetration testing (continuously attack new features)
+- Fuzzing infrastructure (24/7 fuzzing of parsers, protocol handlers)
+- Test coverage enforcement (85% overall, 100% for crypto/wallet)
+- External audit coordination (NCC Group, Trail of Bits, Cure53)
+
+**Red Team Philosophy:**
+- 2 security engineers act as adversaries
+- Simulate nation-state level attacks
+- Test social engineering vectors
+- Attempt deanonymization
+- Try to extract keys from seized devices
+- Report findings weekly
+
+---
+
+### DevOps & Infrastructure (3-4 people)
+
+**Team Mission:** Make deployment effortless—one command to set up local dev, automatic deployment to staging, reproducible builds for production.
+
+**Roles:**
+- **DevOps Lead** (1): CI/CD pipeline, deployment automation, infrastructure as code
+- **Infrastructure Engineer** (1): Cloud deployment (AWS, GCP, Azure), relay node hosting, monitoring
+- **Release Engineer** (1): App store publishing (iOS App Store, Google Play, F-Droid), reproducible builds
+- **SRE** (1) [Optional, can scale later]: Production monitoring, incident response, uptime optimization
+
+**Key Responsibilities:**
+- CI/CD pipeline (GitHub Actions): lint, test, security scan, build, deploy
+- Infrastructure as code (Terraform + Ansible)
+- One-click relay node deployment for community operators
+- Reproducible builds (verify binaries match source)
+- Monitoring and observability (Prometheus + Grafana, Sentry)
+- App store release management
+
+**Deployment Promises:**
+- Local dev setup: <10 minutes (`./scripts/dev-setup.sh`)
+- Community node setup: <15 minutes (`docker-compose up -d`)
+- CI/CD: PR to staging in <30 minutes
+- Production release: staging to app stores in <2 hours (with approvals)
+
+---
+
+### Supporting Roles (2-3 people)
+
+**Technical Writer** (1)
+- User documentation, API documentation, developer guides
+- Onboarding materials for new team members
+- Release notes and changelog maintenance
+
+**Community Manager** (1) [Optional, if going public]
+- Coordinate community relay node operators
+- Open source community management
+- Bug bounty program coordination
+
+**Project Manager** (1) [Optional, can be handled by team leads]
+- Sprint planning coordination
+- Cross-team dependency tracking
+- Timeline management and reporting
+
+---
+
+### Team Scaling Strategy
+
+**Phase 0-1 (Weeks 1-16): Start Small - 25-30 people**
+- Core Leadership: 4
+- Crypto Team: 5 (full team)
+- Mobile Team: 4 (start with 3 Flutter + 1 iOS specialist)
+- Backend Team: 4 (3 Rust engineers + 1 network engineer)
+- Design Team: 4 (design lead + 2 product designers + 1 UX researcher)
+- Security & QA: 4 (security lead + 1 security eng + QA lead + 1 QA eng)
+- DevOps: 3 (DevOps lead + infrastructure engineer + release engineer)
+- Technical Writer: 1
+- **Total: 29 people**
+
+**Phase 2-3 (Weeks 17-36): Scale Up - 35-40 people**
+- Add: Android platform specialist, 2nd security engineer, database engineer, wallet team (4), visual designer
+- Full operational capacity with all specialized roles
+- **Total: 38 people**
+
+**Phase 4-6 (Weeks 37-76): Maintain - 40-45 people**
+- Add: Accessibility specialist, SRE, wallet QA engineer
+- Parallel workstreams on groups, wallet, mesh
+- **Total: 41 people**
+
+**Phase 7 (Weeks 77-88): Scale Down - 15-20 people**
+- Audit support, polish, launch preparation
+- Reduced team focused on bug fixes and audit remediation
+- **Total: 18 people**
+
+---
+
+## Development Workflow & Sprint Process
+
+**Core Principle:** 2-week sprint cycles with design-led development, continuous security validation, and rigorous quality gates.
+
+### Sprint Structure
+
+**Week 1:**
+- **Monday**: Sprint Planning (4 hours)
+  - Review design deliverables from previous sprint
+  - Break down validated designs into engineering tasks
+  - Security threat modeling for new features
+  - Capacity planning and task assignment
+
+- **Tuesday-Thursday**: Development
+  - Daily standups (15 min per team)
+  - Pair programming for crypto/security code
+  - Continuous code review (no PR older than 24 hours)
+
+- **Friday**:
+  - Demo to design team (validate implementation matches design)
+  - Security code review sessions
+  - Dependency updates and security audits
+
+**Week 2:**
+- **Monday-Wednesday**: Development + Testing
+  - Feature completion
+  - Integration testing
+  - Security testing (penetration testing for new attack surface)
+
+- **Thursday**:
+  - Sprint demo to full team (show working features)
+  - Usability testing sessions with design team
+  - Performance benchmarking
+
+- **Friday**:
+  - Retrospective (what worked, what didn't)
+  - Code freeze for sprint
+  - Deploy to internal staging environment
+  - Next sprint prep (design team presents validated designs)
+
+### Design-Led Development Process
+
+**Before Development Starts (Design Sprint -1):**
+1. **User Research** - UX team conducts user interviews, analyzes pain points
+2. **Design Exploration** - 2-3 design directions explored
+3. **Prototyping** - High-fidelity interactive prototypes built
+4. **User Validation** - 5-8 user testing sessions
+5. **Design Handoff** - Validated designs, specs, and Figma files delivered to engineering
+
+**Engineering can only start when:**
+- ✅ Design has been validated with real users
+- ✅ Design specs are complete with measurements, interactions, edge cases
+- ✅ Security implications have been reviewed
+- ✅ Accessibility requirements are defined
+
+**During Development:**
+- Daily design/eng sync (15 min) - catch issues early
+- Design QA every 2 days - validate implementation matches intent
+- Final design approval before sprint demo
+
+### Code Quality Gates
+
+**Every PR must have:**
+- ✅ Unit tests (80%+ coverage for new code)
+- ✅ Integration tests (if touching API boundaries)
+- ✅ Security review (2 security engineers for crypto/wallet code)
+- ✅ Design approval (for UI changes)
+- ✅ Performance benchmarks (no regressions)
+- ✅ Documentation updates
+
+**Automated CI/CD Pipeline:**
+- Linting (rustfmt, clippy, Flutter analyzer)
+- Unit test suite (must pass 100%)
+- Security scanning (cargo-audit, dependency checks)
+- Fuzzing (continuous fuzzing for parsers/crypto)
+- Performance regression tests
+- Build verification (reproducible builds)
+
+### Definition of Done
+
+**A feature is only "done" when:**
+1. ✅ Code reviewed and merged
+2. ✅ All tests passing (unit, integration, security)
+3. ✅ Design QA approved
+4. ✅ Security testing completed
+5. ✅ Documentation written
+6. ✅ Deployed to staging
+7. ✅ Validated in sprint demo
+8. ✅ No critical bugs filed
+
+---
+
+## UX/UI Design-Driven Development
+
+**Core Principle: No code until design is validated with users**
+
+### Design-First Philosophy
+
+**The UX/UI team is not a service team - they lead feature development:**
+- Design discovers and validates user needs BEFORE engineering builds
+- Every feature starts with user research, not technical requirements
+- "Can we build it?" comes after "Should we build it?" and "Will users understand it?"
+- Engineers implement validated solutions, not experimental ideas
+
+### The Design Process (4-6 weeks ahead of engineering)
+
+**Phase 1: Discover (Week -6 to -5)**
+- **User Research**: Interviews with target users (journalists, activists, privacy-conscious users)
+- **Competitive Analysis**: What do Signal, Session, SimpleX do? Where do they fail?
+- **Pain Point Mapping**: What frustrates users about existing privacy tools?
+- **Opportunity Identification**: Where can Invisible be dramatically better?
+- **Deliverable**: Research report with key insights and opportunity areas
+
+**Phase 2: Define (Week -5 to -4)**
+- **User Personas**: Detailed profiles of primary user types
+- **User Journeys**: Map complete flows (onboarding, first message, adding contact, etc.)
+- **Feature Requirements**: What must this feature do? What's nice-to-have?
+- **Success Metrics**: How do we know if this feature succeeds?
+- **Deliverable**: Feature brief with user stories, success criteria, constraints
+
+**Phase 3: Design (Week -4 to -2)**
+- **Exploration**: Design team creates 2-3 different approaches
+- **Internal Critique**: Design team reviews, debates trade-offs
+- **Prototyping**: Build high-fidelity interactive prototypes (Figma)
+- **Accessibility Check**: Ensure designs meet WCAG 2.1 AA standards
+- **Security Review**: Check with security team - does design leak metadata?
+- **Deliverable**: 2-3 high-fidelity design directions
+
+**Phase 4: Validate (Week -2 to -1)**
+- **User Testing**: 8-10 sessions with target users
+  - Task-based testing (can they complete core flows?)
+  - Think-aloud protocol (what confuses them?)
+  - Edge case exploration (what breaks the mental model?)
+- **Iterate**: Refine design based on user feedback
+- **Final Testing**: Validate refined design works
+- **Security Validation**: Ensure UX doesn't compromise privacy
+- **Deliverable**: Validated design with user testing insights
+
+**Phase 5: Handoff (Week -1)**
+- **Design Specs**: Measurements, spacing, typography, colors, interactions
+- **Component Documentation**: How each UI element behaves
+- **Edge Cases**: Loading states, errors, empty states, offline mode
+- **Animation Specs**: Timing, easing, micro-interactions
+- **Accessibility Requirements**: Screen reader behavior, keyboard navigation
+- **Engineering Sync**: Walk through design, answer questions
+- **Deliverable**: Complete design specs ready for implementation
+
+### Design System (Built in Phase 0-1)
+
+**Before Phase 2 begins, we build a comprehensive design system:**
+
+**Foundation**
+- Color palette (optimized for dark mode, high contrast)
+- Typography scale (accessible, readable)
+- Spacing system (8px grid)
+- Iconography (custom icon set for privacy features)
+
+**Components**
+- Buttons (primary, secondary, destructive, disabled states)
+- Input fields (text, secure, validation states)
+- Cards, lists, navigation
+- Modals, sheets, toasts
+- Progress indicators (especially for Scrambler layers)
+
+**Patterns**
+- Onboarding flows
+- Contact management
+- Message bubbles
+- Settings screens
+- Error handling
+- Loading states
+
+**Accessibility**
+- WCAG 2.1 AA compliance minimum
+- Screen reader optimization
+- High contrast mode
+- Reduced motion support
+- Keyboard navigation
+
+### Continuous UX Validation
+
+**Every Sprint:**
+- **Design QA**: Design team reviews every UI implementation
+- **Usability Testing**: 3-5 users test new features in staging
+- **Analytics Review**: How are users actually using features? (privacy-preserving analytics only)
+- **Bug Triage**: Design team prioritizes UX bugs vs. feature work
+
+**Every Phase:**
+- **Comprehensive Usability Study**: 15-20 users test complete feature set
+- **Accessibility Audit**: External audit for WCAG compliance
+- **Cognitive Walkthrough**: Can first-time users complete critical tasks?
+
+**The UX Obsession:**
+- If users can't figure out a feature in 30 seconds, we failed
+- Privacy features must be invisible (automatic) or obvious (one tap)
+- Error messages must be helpful, not technical
+- Every screen must answer: "Where am I? What can I do? What happens next?"
+
+---
+
+## Security & QA Continuous Validation
+
+**Core Principle: Security testing in every sprint, not just at the end**
+
+### Continuous Security Validation
+
+**Every Sprint (2 weeks):**
+
+**Security Code Review (ongoing)**
+- **All crypto code**: 2 security engineers must review + approve
+- **Wallet code**: 2 security engineers + 1 blockchain specialist
+- **Network code**: 1 security engineer + 1 network specialist
+- **No exceptions**: Security-critical code cannot merge without security approval
+
+**Threat Modeling Sessions (Monday of Week 1)**
+- Review new features being built this sprint
+- Identify attack vectors and threat scenarios
+- Update threat model documentation
+- Define security test cases for the sprint
+
+**Security Testing (Week 2)**
+- **Penetration Testing**: Red team attacks new features
+- **Fuzzing**: Continuous fuzzing of parsers, protocol handlers
+- **Dependency Scanning**: Check for vulnerable dependencies
+- **Code Analysis**: Static analysis with clippy, cargo-audit
+- **Memory Safety**: Valgrind, AddressSanitizer for unsafe code
+
+**Security Checklist (before sprint demo)**
+- ✅ No secrets in logs or error messages
+- ✅ All crypto uses constant-time operations
+- ✅ Sensitive data properly zeroized
+- ✅ No timing side-channels in authentication
+- ✅ Input validation on all external data
+- ✅ Proper error handling (fail secure, not open)
+
+### Phase-Level Security Validation
+
+**At the end of each phase:**
+
+**External Security Audit (mini-audit)**
+- Engage external security firm (NCC Group, Trail of Bits, Cure53)
+- Focus on code completed in that phase
+- 1-2 week engagement
+- Remediate all findings before next phase
+
+**Security Regression Testing**
+- Re-run all previous security tests
+- Ensure new features didn't break existing security
+- Validate defense-in-depth still intact
+
+**Formal Verification (for critical crypto)**
+- Phase 0: Verify Double Ratchet implementation
+- Phase 2: Verify Sphinx packet format
+- Phase 5: Verify wallet key derivation
+
+### Continuous Quality Assurance
+
+**Test Coverage Requirements:**
+- **Crypto code**: 100% branch coverage (property testing required)
+- **Wallet code**: 100% branch coverage + extensive integration tests
+- **Network code**: 90% coverage + protocol conformance tests
+- **UI code**: 80% coverage + visual regression tests
+- **Overall**: Minimum 85% coverage across codebase
+
+**Testing Strategy:**
+
+**Unit Tests (every PR)**
+- Fast tests (<5 sec total runtime)
+- Test individual functions/methods
+- Mock external dependencies
+- Known-answer tests for crypto (NIST test vectors)
+
+**Integration Tests (daily)**
+- Test component interactions
+- Real database, real crypto, real network
+- End-to-end message flow tests
+- Wallet transaction tests (on testnets)
+
+**Property Testing (crypto & wallet)**
+- Use proptest/quickcheck
+- Verify invariants hold (e.g., encrypt→decrypt = identity)
+- Find edge cases humans miss
+- Run 10,000+ randomized test cases
+
+**Fuzzing (continuous)**
+- AFL/cargo-fuzz on parsers
+- Fuzz packet formats (Sphinx, protocol buffers)
+- Fuzz API inputs
+- Run 24/7 on dedicated fuzzing infrastructure
+- Crash triage within 24 hours
+
+**Performance Testing (every sprint)**
+- Benchmark crypto operations (must be <10ms for common ops)
+- Load testing (relay nodes must handle 10k messages/sec)
+- Memory profiling (no leaks, no unbounded growth)
+- Battery impact testing (mobile app must not drain battery)
+
+**Security Testing (every sprint)**
+- OWASP Top 10 checks
+- SQL injection testing (even with SQLCipher)
+- XSS testing (if any web components)
+- Authentication bypass attempts
+- Privilege escalation tests
+- Side-channel analysis (timing attacks)
+
+### QA Release Process
+
+**Before any deployment (staging or production):**
+
+1. **Automated Test Suite** (CI/CD)
+   - All unit tests pass
+   - All integration tests pass
+   - Security scans clean
+   - No performance regressions
+
+2. **Manual QA Testing**
+   - Smoke tests on real devices (iOS/Android)
+   - Critical user flows (onboarding, messaging, payments)
+   - Edge case testing (poor network, low battery, etc.)
+   - Accessibility testing (screen reader, high contrast)
+
+3. **Security Validation**
+   - Security checklist complete
+   - Penetration test findings remediated
+   - Dependency audit clean
+   - No known critical vulnerabilities
+
+4. **Design QA**
+   - Visual regression tests pass
+   - Design team approves implementation
+   - Usability testing complete
+
+5. **Sign-Off**
+   - Engineering Lead ✓
+   - Security Lead ✓
+   - QA Lead ✓
+   - Design Lead ✓
+
+**Red Team (Dedicated Attackers)**
+- 2 security engineers act as adversaries
+- Continuously try to break the system
+- Simulate nation-state level attacks
+- Test social engineering vectors
+- Attempt to deanonymize users
+- Try to extract keys from seized devices
+- Report findings weekly
+
+**Bug Bounty Program (Phase 6+)**
+- Launch public bug bounty
+- Rewards: $500-$50,000 depending on severity
+- Scope: All client code, relay code, protocol
+- Out of scope: Social engineering, DoS
 
 ---
 

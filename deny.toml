@@ -1,43 +1,46 @@
-# cargo-deny configuration for security auditing
-# Run with: cargo deny check
+# cargo-deny configuration for Invisible
+# Checks licenses, security advisories, and dependency sources
 
 [advisories]
-# Security vulnerability scanning
-db-path = "~/.cargo/advisory-db"
-db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
+version = 2
 yanked = "deny"
-notice = "warn"
+ignore = []
 
 [licenses]
-# License compliance
-unlicensed = "deny"
+version = 2
 allow = [
     "MIT",
     "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
     "BSD-3-Clause",
     "ISC",
-    "Zlib",
+    "Unicode-DFS-2016",
 ]
-deny = [
-    "GPL-3.0",
+confidence-threshold = 0.8
+
+[[licenses.clarify]]
+name = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 }
 ]
-copyleft = "warn"
 
 [bans]
-# Dependency restrictions
 multiple-versions = "warn"
-wildcards = "warn"
+wildcards = "deny"
 highlight = "all"
 
-# Deny known problematic crates
+# Deny specific crates for security reasons
 deny = [
-    # Add problematic crates here
+    # Example: { name = "unsafe-crate", reason = "Known vulnerabilities" }
 ]
 
+skip = []
+skip-tree = []
+
 [sources]
-# Only allow crates from crates.io and git
 unknown-registry = "deny"
-unknown-git = "warn"
+unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

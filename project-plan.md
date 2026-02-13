@@ -84,9 +84,9 @@
 
 ## Phase 4: Groups + Media + Calls (Weeks 37-48)
 
-**Goal:** Full-featured secure communication.
+**Goal:** Full-featured secure communication + admin dashboard for power users.
 
-| Milestone | Description | Epic |
+| Milestone | Description | Epic/Doc |
 |-----------|-------------|------|
 | M4.1 | MLS-based group messaging (RFC 9420) | [epic-04](spec/epics/epic-04-groups.md) |
 | M4.2 | Encrypted member lists | [epic-04](spec/epics/epic-04-groups.md) |
@@ -94,8 +94,14 @@
 | M4.4 | RAM-based media viewer (no disk writes) | [epic-05](spec/epics/epic-05-media.md) |
 | M4.5 | E2EE voice/video calls (WebRTC + custom SRTP) | [epic-06](spec/epics/epic-06-calls.md) |
 | M4.6 | Burn Rooms — self-destructing chats | [epic-15](spec/epics/epic-15-burn-rooms.md) |
+| M4.7 | **Admin Dashboard: UI framework (tabs, navigation, responsive)** | [admin-dashboard](spec/architecture/admin-dashboard.md) |
+| M4.8 | **Admin Dashboard: Configuration tab (service toggles, privacy presets)** | [admin-dashboard](spec/architecture/admin-dashboard.md) |
+| M4.9 | **Admin Dashboard: Status dashboard (real-time monitoring, health checks)** | [admin-dashboard](spec/architecture/admin-dashboard.md) |
+| M4.10 | **Admin Dashboard: Metrics collection and visualization (graphs, stats)** | [admin-dashboard](spec/architecture/admin-dashboard.md) |
+| M4.11 | **Admin Dashboard: Activity logging system (events, filters, export)** | [admin-dashboard](spec/architecture/admin-dashboard.md) |
+| M4.12 | **Admin Dashboard: Message send indicator (layer-by-layer progress)** | [admin-dashboard](spec/architecture/admin-dashboard.md) |
 
-**Deliverable:** Group messaging, media sharing, voice/video calls, burn rooms.
+**Deliverable:** Group messaging, media sharing, voice/video calls, burn rooms, comprehensive admin dashboard with full visibility and control over all privacy features.
 
 ---
 
@@ -306,3 +312,106 @@ Even with Ghost VPN encrypting all traffic, cellular carriers can still track us
 - **[spec/architecture/network-privacy-mode.md](spec/architecture/network-privacy-mode.md)** - Technical specification
 
 **Result:** Complete network anonymity from cellular carrier to internet destination - closes the cellular metadata gap that VPN alone cannot address.
+
+---
+
+## Admin Dashboard (Privacy Control Center)
+
+**Phase 4 includes a comprehensive admin dashboard for power users.**
+
+The Admin Dashboard provides complete transparency and control over every privacy protection in Invisible. Users can see exactly what's active, configure services independently, monitor real-time status, and understand performance metrics.
+
+### Key Features
+
+**1. Configuration Tab**
+- Privacy level presets (Paranoid, High, Standard, Low) - one-tap switching
+- Individual service toggles (enable/disable each layer independently)
+- Fine-grained configuration for each protection layer
+- Warnings when disabling critical services
+- Save and apply changes with confirmation
+
+**2. Status Dashboard Tab**
+- Real-time monitoring of all active services
+- Health status for each protection layer
+- Connection details (VPN endpoint, network mode, etc.)
+- Service metrics (latency, throughput, success rates)
+- Auto-refresh every 2 seconds
+- Overall system health indicator
+
+**3. Privacy Level Presets**
+
+| Level | Latency | Services | Use Case |
+|-------|---------|----------|----------|
+| **Paranoid** | 30-90s | ALL max settings | Journalists, activists, whistleblowers |
+| **High** (default) | 5-45s | ALL balanced | Privacy-conscious users |
+| **Standard** | 2-20s | Most enabled | Everyday secure messaging |
+| **Low** | 1-8s | Essential only | Speed priority, low threat |
+
+**4. Message Send Indicator**
+- Real-time progress as message routes through Scrambler
+- Layer-by-layer status (encrypted, fragmented, mixed, etc.)
+- Shows active protections for each message
+- Compact indicator in message bubble (tap to expand)
+- Delivery time and path information
+
+**5. Service Toggle System**
+- Enable/disable individual services
+- Core services locked (E2EE, Ghost VPN)
+- Optional services configurable (cover traffic, eSIM, wallet features)
+- Dependency warnings (e.g., dead drops require mixnet)
+- Immediate visual feedback
+
+**6. Metrics & Performance**
+- Historical statistics (last 24h, 7d, 30d)
+- Latency distribution graphs
+- Success rates and uptime
+- Bandwidth usage
+- Jurisdiction distribution
+- Export reports (CSV, JSON)
+
+**7. Activity Logs**
+- Detailed event log of all system activity
+- Filterable by service, time, log level
+- Shows VPN rotations, eSIM changes, message delivery, security events
+- Export logs for auditing
+- Privacy-preserving (no message content logged)
+
+### Benefits
+
+- ✅ **Complete transparency** - See exactly what protections are active
+- ✅ **Full control** - Configure every service independently
+- ✅ **Real-time monitoring** - Track system health and performance
+- ✅ **Informed decisions** - Understand privacy vs speed tradeoffs
+- ✅ **Power user features** - Advanced config, metrics, logs
+- ✅ **Education** - Learn what each layer does
+
+### User Experience
+
+**Quick Access:**
+- Status bar icon shows current privacy level
+- Tap to open admin dashboard
+- Swipe between tabs (Config, Status, Metrics, Logs)
+
+**Message Indicator:**
+```
+Sending message...
+✓ Encrypted (Double Ratchet + PQ)
+✓ Fragmented (3-of-5 shares)
+⏳ Routing through mixnet (Layer 2/5)
+✓ Cover traffic active
+...
+Estimated delivery: 12-18s
+```
+
+**After sending:**
+```
+You: Hey, can we meet at 3pm?
+🛡️ [7 layers] 14:32  ← Tap for details
+```
+
+### Documentation
+
+- **[ADMIN-DASHBOARD-SUMMARY.md](ADMIN-DASHBOARD-SUMMARY.md)** - Executive summary
+- **[spec/architecture/admin-dashboard.md](spec/architecture/admin-dashboard.md)** - Full specification (UI mockups, implementation details)
+
+**Result:** Power users get complete visibility and control over the privacy stack. Casual users can use simple presets. Everyone understands what protections are active and how the system is performing.

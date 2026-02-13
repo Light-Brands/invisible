@@ -1,1 +1,1 @@
-// API modules will be added here
+pub mod auth;

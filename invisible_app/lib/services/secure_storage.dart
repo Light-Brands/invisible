@@ -22,6 +22,7 @@ class SecureStorage {
   static const String _pinHashKey = 'invisible_a8f3d2e1';
   static const String _2faSecretKey = 'invisible_b9c4e3f2';
   static const String _onboardingKey = 'invisible_c1d5f4a3';
+  static const String _walletMnemonicKey = 'invisible_d2e6g5h4';
 
   // PIN storage
   static Future<void> storePin(String hashedPin) async {
@@ -84,6 +85,19 @@ class SecureStorage {
   static Future<void> clearFailedAttempts() async {
     await _storage.delete(key: 'failed_attempts');
     await _storage.delete(key: 'last_failed_attempt');
+  }
+
+  // Wallet mnemonic storage
+  static Future<void> storeWalletMnemonic(String mnemonic) async {
+    await _storage.write(key: _walletMnemonicKey, value: mnemonic);
+  }
+
+  static Future<String?> getWalletMnemonic() async {
+    return await _storage.read(key: _walletMnemonicKey);
+  }
+
+  static Future<void> deleteWalletMnemonic() async {
+    await _storage.delete(key: _walletMnemonicKey);
   }
 
   // Clear all (for panic wipe)

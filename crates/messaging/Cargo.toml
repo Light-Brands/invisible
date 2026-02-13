@@ -1,0 +1,41 @@
+[package]
+name = "invisible-messaging"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Core crates
+invisible-crypto = { path = "../crypto" }
+invisible-storage = { path = "../storage" }
+invisible-scrambler = { path = "../scrambler" }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Cryptography
+zeroize = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[lib]
+name = "invisible_messaging"
+path = "src/lib.rs"

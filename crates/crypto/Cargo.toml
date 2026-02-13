@@ -1,0 +1,46 @@
+[package]
+name = "invisible-crypto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Cryptography primitives
+ring = { workspace = true }
+argon2 = { workspace = true }
+zeroize = { workspace = true }
+subtle = { workspace = true }
+
+# Signal Protocol (will need to add libsignal-protocol)
+# For now, implementing from scratch using ring
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+bincode = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Utilities
+rand = "0.8"
+hex = "0.4"
+base64 = "0.21"
+
+# Logging
+tracing = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "crypto_bench"
+harness = false
+
+[lib]
+name = "invisible_crypto"
+path = "src/lib.rs"

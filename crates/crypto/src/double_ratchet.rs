@@ -99,9 +99,8 @@ impl DoubleRatchet {
         // Generate initial DH key pair
         let dh_self = KeyPair::generate()?;
 
-        // Perform initial DH ratchet step
-        // TODO: Implement actual X25519 DH
-        let dh_output = vec![0u8; 32]; // Placeholder
+        // Perform initial DH ratchet step with remote public key
+        let dh_output = dh_self.dh(&remote_public_key)?;
 
         // Derive new root key and sending chain key
         let (new_root_key, chain_key_send) = kdf_rk(&root_key, &dh_output)?;
@@ -210,21 +209,19 @@ impl DoubleRatchet {
         // Update remote DH public key
         self.dh_remote = header.public_key.clone();
 
-        // Perform DH with new remote key
-        // TODO: Implement actual X25519 DH
-        let dh_output = vec![0u8; 32]; // Placeholder
+        // Perform DH with new remote key using our current DH keypair
+        let dh_output = self.dh_self.dh(&self.dh_remote)?;
 
         // Derive new root key and receiving chain key
         let (new_root_key, chain_key_recv) = kdf_rk(&self.root_key, &dh_output)?;
         self.root_key = new_root_key;
         self.chain_key_recv = chain_key_recv;
 
-        // Generate new DH key pair
+        // Generate new DH key pair for next ratchet
         self.dh_self = KeyPair::generate()?;
 
-        // Perform DH with new key pair
-        // TODO: Implement actual X25519 DH
-        let dh_output2 = vec![0u8; 32]; // Placeholder
+        // Perform DH with new key pair and remote key
+        let dh_output2 = self.dh_self.dh(&self.dh_remote)?;
 
         // Derive new root key and sending chain key
         let (new_root_key2, chain_key_send) = kdf_rk(&self.root_key, &dh_output2)?;

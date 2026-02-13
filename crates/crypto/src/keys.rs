@@ -5,7 +5,6 @@
 
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
-use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret as X25519Secret};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::error::{CryptoError, Result};
@@ -20,7 +19,7 @@ pub const ED25519_PRIVATE_KEY_SIZE: usize = 32;
 pub const X25519_KEY_SIZE: usize = 32;
 
 /// A cryptographic key pair (public + private key)
-#[derive(Debug, Clone, Zeroize, ZeroizeOnDrop)]
+#[derive(Debug, Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct KeyPair {
     /// Public key (safe to share)
     #[zeroize(skip)]
@@ -33,6 +32,7 @@ impl KeyPair {
     /// Generate a new random key pair using X25519
     pub fn generate() -> Result<Self> {
         use rand::rngs::OsRng;
+        use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret as X25519Secret};
 
         // Generate X25519 private key
         let private_key = X25519Secret::random_from_rng(OsRng);
@@ -48,6 +48,8 @@ impl KeyPair {
 
     /// Perform Diffie-Hellman key agreement
     pub fn dh(&self, their_public: &[u8]) -> Result<Vec<u8>> {
+        use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret as X25519Secret};
+
         // Reconstruct our private key
         let private_bytes: [u8; 32] = self.private
             .as_slice()
@@ -92,9 +94,13 @@ impl IdentityKey {
     /// Generate a new identity key using Ed25519
     pub fn generate() -> Result<Self> {
         use rand::rngs::OsRng;
+        use rand::RngCore;
 
         // Generate Ed25519 signing key
-        let signing_key = SigningKey::generate(&mut OsRng);
+        let mut secret_key_bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut secret_key_bytes);
+
+        let signing_key = SigningKey::from_bytes(&secret_key_bytes);
         let verifying_key = signing_key.verifying_key();
 
         Ok(Self {
@@ -256,8 +262,12 @@ mod tests {
 
     #[test]
     fn test_signed_prekey_generation() {
-        let spk = SignedPreKey::generate(1).unwrap();
+        let identity = IdentityKey::generate().unwrap();
+        let spk = SignedPreKey::generate(1, &identity).unwrap();
         assert_eq!(spk.id(), 1);
         assert!(!spk.public_key().is_empty());
+
+        // Verify signature
+        assert!(spk.verify(&identity).is_ok());
     }
 }

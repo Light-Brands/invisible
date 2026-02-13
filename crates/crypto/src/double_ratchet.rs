@@ -16,14 +16,14 @@
 //! - **Post-Compromise Security:** New DH ratchet step restores security after compromise
 //! - **Message Loss Resilience:** Can handle out-of-order or lost messages
 
-use ring::aead::{self, Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
+use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::error::{CryptoError, Result};
 use crate::kdf::{kdf_ck, kdf_rk};
 use crate::keys::KeyPair;
-use crate::utils::{concat, random_bytes};
+use crate::utils::random_bytes;
 
 /// Maximum number of skipped message keys to store
 const MAX_SKIP: usize = 1000;
@@ -233,7 +233,7 @@ impl DoubleRatchet {
 
     /// Skip message keys for out-of-order messages
     fn skip_message_keys(&mut self, until: u32) -> Result<()> {
-        if self.recv_count + MAX_SKIP as u32 < until {
+        if self.recv_count + (MAX_SKIP as u32) < until {
             return Err(CryptoError::RatchetStateError(
                 "Too many skipped messages".to_string(),
             ));
@@ -260,7 +260,7 @@ impl DoubleRatchet {
         if let Some(pos) = self.skipped_keys.iter().position(|k| {
             k.public_key == message.header.public_key && k.message_num == message.header.message_num
         }) {
-            Some(self.skipped_keys.remove(pos).message_key)
+            Some(self.skipped_keys.remove(pos).message_key.clone())
         } else {
             None
         }
@@ -355,7 +355,7 @@ mod tests {
     fn test_aead_encrypt_decrypt() {
         let shared_secret = vec![1u8; 32];
         let remote_key = vec![2u8; 32];
-        let mut alice = DoubleRatchet::init_alice(&shared_secret, remote_key).unwrap();
+        let alice = DoubleRatchet::init_alice(&shared_secret, remote_key).unwrap();
 
         let key = vec![0u8; 32];
         let plaintext = b"Hello, World!";

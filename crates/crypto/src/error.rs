@@ -54,7 +54,7 @@ pub enum CryptoError {
 }
 
 impl From<bincode::Error> for CryptoError {
-    fn from(err: bincode::Error) for CryptoError {
+    fn from(err: bincode::Error) -> CryptoError {
         CryptoError::SerializationError(err.to_string())
     }
 }

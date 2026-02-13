@@ -70,6 +70,7 @@ pub struct InitialMessage {
 }
 
 /// Initiator side of X3DH (Alice)
+#[derive(Debug)]
 pub struct X3DHInitiator {
     /// Alice's identity key
     identity_key: IdentityKey,
@@ -151,7 +152,7 @@ impl X3DHInitiator {
     }
 
     /// Perform Diffie-Hellman key agreement
-    fn dh(&self, our_public: &[u8], their_public: &[u8]) -> Result<Vec<u8>> {
+    fn dh(&self, _our_public: &[u8], their_public: &[u8]) -> Result<Vec<u8>> {
         use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
         use rand::rngs::OsRng;
 
@@ -170,6 +171,7 @@ impl X3DHInitiator {
 }
 
 /// Responder side of X3DH (Bob)
+#[derive(Debug)]
 pub struct X3DHResponder {
     /// Bob's identity key
     identity_key: IdentityKey,
@@ -255,7 +257,7 @@ impl X3DHResponder {
     }
 
     /// Perform Diffie-Hellman key agreement
-    fn dh(&self, our_public: &[u8], their_public: &[u8]) -> Result<Vec<u8>> {
+    fn dh(&self, _our_public: &[u8], their_public: &[u8]) -> Result<Vec<u8>> {
         use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
         use rand::rngs::OsRng;
 
@@ -280,7 +282,7 @@ mod tests {
     #[test]
     fn test_prekey_bundle_creation() {
         let identity = IdentityKey::generate().unwrap();
-        let signed_pre_key = SignedPreKey::generate(1).unwrap();
+        let signed_pre_key = SignedPreKey::generate(1, &identity).unwrap();
         let one_time_pre_key = OneTimePreKey::generate(1).unwrap();
 
         let bundle = PreKeyBundle {
@@ -317,7 +319,7 @@ mod tests {
     #[test]
     fn test_x3dh_responder_bundle() {
         let identity = IdentityKey::generate().unwrap();
-        let signed_pre_key = SignedPreKey::generate(1).unwrap();
+        let signed_pre_key = SignedPreKey::generate(1, &identity).unwrap();
         let one_time_pre_keys = vec![OneTimePreKey::generate(1).unwrap()];
 
         let responder = X3DHResponder::new(identity, signed_pre_key, one_time_pre_keys);

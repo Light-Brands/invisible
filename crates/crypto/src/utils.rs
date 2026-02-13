@@ -104,12 +104,16 @@ pub fn bytes_to_hex(bytes: &[u8]) -> String {
 
 /// Convert base64 string to bytes
 pub fn base64_to_bytes(b64: &str) -> Result<Vec<u8>> {
-    base64::decode(b64).map_err(|e| CryptoError::InvalidKey(format!("Invalid base64: {}", e)))
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|e| CryptoError::InvalidKey(format!("Invalid base64: {}", e)))
 }
 
 /// Convert bytes to base64 string
 pub fn bytes_to_base64(bytes: &[u8]) -> String {
-    base64::encode(bytes)
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
 #[cfg(test)]

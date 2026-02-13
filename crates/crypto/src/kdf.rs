@@ -29,8 +29,9 @@ pub fn hkdf_sha256(
     let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, salt.unwrap_or(&[]));
     let prk = salt.extract(input_key_material);
 
+    let info_slice = [info];
     let okm = prk
-        .expand(&[info], MyLen(output_len))
+        .expand(&info_slice, MyLen(output_len))
         .map_err(|_| CryptoError::KeyDerivationFailed("HKDF expand failed".to_string()))?;
 
     let mut output = vec![0u8; output_len];

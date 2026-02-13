@@ -1,0 +1,45 @@
+[package]
+name = "invisible-scrambler"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Cryptography
+invisible-crypto = { path = "../crypto" }
+ring = { workspace = true }
+zeroize = { workspace = true }
+subtle = { workspace = true }
+
+# Networking
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+bincode = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Utilities
+rand = "0.8"
+chrono = "0.4"
+
+# Logging
+tracing = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "scrambler_bench"
+harness = false
+
+[lib]
+name = "invisible_scrambler"
+path = "src/lib.rs"

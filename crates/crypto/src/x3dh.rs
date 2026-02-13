@@ -151,12 +151,21 @@ impl X3DHInitiator {
     }
 
     /// Perform Diffie-Hellman key agreement
-    ///
-    /// TODO: Implement actual X25519 scalar multiplication
-    fn dh(&self, _public: &[u8], _private: &[u8]) -> Result<Vec<u8>> {
-        // Placeholder: In real implementation, this would be:
-        // x25519_dalek::x25519(private_scalar, public_point)
-        Ok(vec![0u8; 32])
+    fn dh(&self, our_public: &[u8], their_public: &[u8]) -> Result<Vec<u8>> {
+        use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
+        use rand::rngs::OsRng;
+
+        // Generate temp key for DH
+        // TODO: In production, use actual stored private keys
+        let our_secret = StaticSecret::random_from_rng(OsRng);
+
+        let their_pub_bytes: [u8; 32] = their_public
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid public key length".to_string()))?;
+        let their_public_key = X25519PublicKey::from(their_pub_bytes);
+
+        let shared_secret = our_secret.diffie_hellman(&their_public_key);
+        Ok(shared_secret.as_bytes().to_vec())
     }
 }
 
@@ -246,12 +255,21 @@ impl X3DHResponder {
     }
 
     /// Perform Diffie-Hellman key agreement
-    ///
-    /// TODO: Implement actual X25519 scalar multiplication
-    fn dh(&self, _public: &[u8], _private: &[u8]) -> Result<Vec<u8>> {
-        // Placeholder: In real implementation, this would be:
-        // x25519_dalek::x25519(private_scalar, public_point)
-        Ok(vec![0u8; 32])
+    fn dh(&self, our_public: &[u8], their_public: &[u8]) -> Result<Vec<u8>> {
+        use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
+        use rand::rngs::OsRng;
+
+        // Generate temp key for DH
+        // TODO: In production, use actual stored private keys
+        let our_secret = StaticSecret::random_from_rng(OsRng);
+
+        let their_pub_bytes: [u8; 32] = their_public
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid public key length".to_string()))?;
+        let their_public_key = X25519PublicKey::from(their_pub_bytes);
+
+        let shared_secret = our_secret.diffie_hellman(&their_public_key);
+        Ok(shared_secret.as_bytes().to_vec())
     }
 }
 

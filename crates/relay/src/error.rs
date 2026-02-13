@@ -1,18 +1,18 @@
-//! Error types for relay operations
+//! Error types for the Relay
 
 use thiserror::Error;
 
 /// Result type for relay operations
 pub type Result<T> = std::result::Result<T, RelayError>;
 
-/// Errors that can occur in relay operations
+/// Errors that can occur in the Relay
 #[derive(Error, Debug)]
 pub enum RelayError {
     /// Packet processing failed
     #[error("Packet processing error: {0}")]
     PacketError(String),
 
-    /// Network error
+    /// Network operation failed
     #[error("Network error: {0}")]
     NetworkError(String),
 
@@ -20,35 +20,19 @@ pub enum RelayError {
     #[error("Configuration error: {0}")]
     ConfigError(String),
 
-    /// Mixing error
-    #[error("Mixing error: {0}")]
-    MixingError(String),
-
-    /// Rate limit exceeded
-    #[error("Rate limit exceeded")]
-    RateLimitExceeded,
-
-    /// Storage error
-    #[error("Storage error: {0}")]
-    StorageError(String),
-
-    /// Cryptographic error
-    #[error("Crypto error: {0}")]
-    CryptoError(String),
-
-    /// Scrambler error
-    #[error("Scrambler error: {0}")]
-    ScramblerError(String),
-}
-
-impl From<invisible_crypto::CryptoError> for RelayError {
-    fn from(err: invisible_crypto::CryptoError) -> Self {
-        RelayError::CryptoError(err.to_string())
-    }
+    /// Invalid packet format
+    #[error("Invalid packet: {0}")]
+    InvalidPacket(String),
 }
 
 impl From<invisible_scrambler::ScramblerError> for RelayError {
     fn from(err: invisible_scrambler::ScramblerError) -> Self {
-        RelayError::ScramblerError(err.to_string())
+        RelayError::PacketError(err.to_string())
+    }
+}
+
+impl From<std::io::Error> for RelayError {
+    fn from(err: std::io::Error) -> Self {
+        RelayError::NetworkError(err.to_string())
     }
 }

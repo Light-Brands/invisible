@@ -54,7 +54,7 @@ pub enum Jurisdiction {
 }
 
 /// Mix strategy configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MixStrategy {
     /// Batch size before mixing
     pub batch_size: usize,

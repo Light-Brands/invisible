@@ -7,43 +7,34 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-# Core
+# Internal dependencies
 invisible-crypto = { path = "../crypto" }
 invisible-scrambler = { path = "../scrambler" }
 
 # Networking
-tokio = { workspace = true }
-axum = "0.7"
-tower = "0.4"
-tower-http = "0.5"
-hyper = "1.0"
+tokio = { workspace = true, features = ["full"] }
 
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
 bincode = { workspace = true }
 
-# Cryptography
-ring = { workspace = true }
-zeroize = { workspace = true }
-
 # Error handling
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+
+# Cryptography
+ring = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Metrics
-prometheus = "0.13"
-
 # Utilities
-uuid = { version = "1.6", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
 
 [dev-dependencies]
-proptest = { workspace = true }
+tokio-test = "0.4"
 
 [lib]
 name = "invisible_relay"
@@ -51,4 +42,4 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "invisible-relay"
-path = "src/bin/relay.rs"
+path = "src/main.rs"

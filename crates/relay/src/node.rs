@@ -1,211 +1,248 @@
-//! Relay Node Implementation
+//! Mix Node Implementation
+//!
+//! Relay nodes process Sphinx packets through the mixnet.
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
+use std::net::SocketAddr;
 
-use invisible_scrambler::mixnet::{MixNode, MixNodeState, MixStrategy};
-use invisible_scrambler::cover_traffic::{CoverTrafficConfig, CoverTrafficGenerator};
-use invisible_scrambler::sphinx::{SphinxPacket, process_packet, ProcessedPacket};
-use invisible_scrambler::temporal::{TemporalConfig, TemporalDelayGenerator};
+use invisible_scrambler::{
+    dead_drop::{DeadDropNode, DeadDropConfig},
+    mixnet::{GeoLocation, Jurisdiction, MixNodeState, MixStrategy},
+    sphinx::{SphinxPacket, process_packet, ProcessedPacket},
+};
 
 use crate::error::{Result, RelayError};
 
-/// Relay node configuration
-#[derive(Debug, Clone)]
-pub struct RelayConfig {
-    /// Node information
-    pub node: MixNode,
-    /// Mixing strategy
-    pub mix_strategy: MixStrategy,
-    /// Cover traffic configuration
-    pub cover_traffic: CoverTrafficConfig,
-    /// Temporal delay configuration
-    pub temporal: TemporalConfig,
-    /// Node private key
+/// Mix node configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NodeConfig {
+    /// Node identifier
+    pub node_id: [u8; 32],
+    /// Node layer (0-4)
+    pub layer: u8,
+    /// Private key
     pub private_key: Vec<u8>,
+    /// Public key
+    pub public_key: Vec<u8>,
+    /// Listen address
+    pub listen_addr: SocketAddr,
+    /// Geographic location
+    pub location: GeoLocation,
+    /// Mix strategy
+    pub mix_strategy: MixStrategy,
+    /// Dead drop config
+    pub dead_drop_config: DeadDropConfig,
 }
 
-/// Relay node instance
-#[derive(Debug)]
-pub struct RelayNode {
-    /// Node configuration
-    config: RelayConfig,
-    /// Mix node state
-    state: Arc<RwLock<MixNodeState>>,
-    /// Cover traffic generator
-    cover_traffic: CoverTrafficGenerator,
-    /// Temporal delay generator
-    temporal: TemporalDelayGenerator,
-}
-
-impl RelayNode {
-    /// Create a new relay node
-    pub fn new(config: RelayConfig) -> Self {
-        let mix_state = MixNodeState::new(
-            config.node.clone(),
-            config.mix_strategy.clone(),
-        );
+impl Default for NodeConfig {
+    fn default() -> Self {
+        use std::net::{IpAddr, Ipv4Addr};
 
         Self {
-            cover_traffic: CoverTrafficGenerator::new(config.cover_traffic.clone()),
-            temporal: TemporalDelayGenerator::new(config.temporal.clone()),
+            node_id: [0u8; 32],
+            layer: 0,
+            private_key: vec![0u8; 32],
+            public_key: vec![0u8; 32],
+            listen_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080),
+            location: GeoLocation {
+                country: "CH".to_string(),
+                jurisdiction: Jurisdiction::PrivacyFriendly,
+            },
+            mix_strategy: MixStrategy::default(),
+            dead_drop_config: DeadDropConfig::default(),
+        }
+    }
+}
+
+/// Node statistics
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct NodeStats {
+    /// Packets received
+    pub packets_received: u64,
+    /// Packets forwarded
+    pub packets_forwarded: u64,
+    /// Packets delivered
+    pub packets_delivered: u64,
+    /// Current batch size
+    pub current_batch_size: usize,
+    /// Dead drop messages
+    pub dead_drop_messages: usize,
+}
+
+/// Mix node
+#[derive(Debug)]
+pub struct MixNode {
+    config: NodeConfig,
+    mix_state: MixNodeState,
+    dead_drop: DeadDropNode,
+    stats: NodeStats,
+    output_queue: VecDeque<(SphinxPacket, SocketAddr)>,
+}
+
+impl MixNode {
+    /// Create new mix node
+    pub fn new(config: NodeConfig) -> Self {
+        let mix_node = invisible_scrambler::mixnet::MixNode {
+            id: config.node_id,
+            layer: config.layer,
+            public_key: config.public_key.clone(),
+            address: config.listen_addr.to_string(),
+            location: config.location.clone(),
+        };
+
+        let mix_state = MixNodeState::new(mix_node, config.mix_strategy.clone());
+        let dead_drop = DeadDropNode::new(config.dead_drop_config.clone());
+
+        Self {
             config,
-            state: Arc::new(RwLock::new(mix_state)),
+            mix_state,
+            dead_drop,
+            stats: NodeStats::default(),
+            output_queue: VecDeque::new(),
         }
     }
 
-    /// Start the relay node
-    pub async fn start(&self) -> Result<()> {
-        tracing::info!("Starting relay node {}", hex::encode(&self.config.node.id));
+    /// Process incoming packet
+    pub async fn process_packet(&mut self, packet: SphinxPacket) -> Result<()> {
+        self.stats.packets_received += 1;
 
-        // Spawn background tasks
-        self.spawn_cover_traffic_task();
-        self.spawn_mixing_task();
+        match process_packet(&packet, &self.config.private_key)? {
+            ProcessedPacket::Forward { packet, next_hop } => {
+                self.mix_state.add_packet(packet);
 
-        Ok(())
-    }
+                tracing::debug!("Packet queued for forwarding");
 
-    /// Process an incoming packet
-    pub async fn process_packet(&self, packet: SphinxPacket) -> Result<()> {
-        tracing::debug!("Processing incoming packet");
-
-        // Process Sphinx packet
-        let processed = process_packet(&packet, &self.config.private_key)?;
-
-        match processed {
-            ProcessedPacket::Forward { next_hop, packet } => {
-                // Add to mix queue
-                let mut state = self.state.write().await;
-                state.add_packet(packet);
-                
-                tracing::debug!("Packet queued for mixing, next hop: {}", hex::encode(&next_hop));
+                if self.mix_state.should_forward() {
+                    self.forward_batch().await?;
+                }
             }
             ProcessedPacket::Deliver { message } => {
-                // Final destination - deliver message
-                tracing::info!("Packet delivered: {} bytes", message.len());
-                // TODO: Forward to recipient's mailbox
+                self.handle_final_payload(message).await?;
+                self.stats.packets_delivered += 1;
             }
         }
 
         Ok(())
     }
 
-    /// Spawn cover traffic generation task
-    fn spawn_cover_traffic_task(&self) {
-        let generator = self.cover_traffic.clone();
-        let node = self.clone();
+    async fn forward_batch(&mut self) -> Result<()> {
+        let packets = self.mix_state.mix_and_extract();
 
-        tokio::spawn(async move {
-            loop {
-                // Wait for next cover packet timing
-                let delay = generator.next_delay();
-                tokio::time::sleep(delay).await;
+        for packet in packets {
+            let next_hop = self.config.listen_addr; // TODO: Extract from packet
+            self.output_queue.push_back((packet, next_hop));
+            self.stats.packets_forwarded += 1;
+        }
 
-                // Generate and send cover packet
-                match generator.generate_cover_packet() {
-                    Ok(packet) => {
-                        tracing::trace!("Generated cover packet");
-                        if let Err(e) = node.process_packet(packet).await {
-                            tracing::error!("Failed to process cover packet: {}", e);
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to generate cover packet: {}", e);
-                    }
-                }
-            }
-        });
+        Ok(())
     }
 
-    /// Spawn packet mixing task
-    fn spawn_mixing_task(&self) {
-        let state = Arc::clone(&self.state);
-        let temporal = self.temporal.clone();
+    async fn handle_final_payload(&mut self, payload: Vec<u8>) -> Result<()> {
+        if payload.starts_with(b"DEADROP_STORE:") {
+            self.handle_dead_drop_store(payload)?;
+        } else {
+            tracing::debug!(size = payload.len(), "Message delivered");
+        }
 
-        tokio::spawn(async move {
-            loop {
-                // Check if batch is ready
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        Ok(())
+    }
 
-                let should_forward = {
-                    let state = state.read().await;
-                    state.should_forward()
-                };
+    fn handle_dead_drop_store(&mut self, payload: Vec<u8>) -> Result<()> {
+        if payload.len() < 78 {
+            return Err(RelayError::InvalidPacket("Payload too short".to_string()));
+        }
 
-                if should_forward {
-                    let mut state_write = state.write().await;
-                    let packets = state_write.mix_and_extract();
-                    
-                    tracing::info!("Mixing and forwarding {} packets", packets.len());
+        let mut drop_id = [0u8; 32];
+        drop_id.copy_from_slice(&payload[14..46]);
 
-                    // Apply temporal delays
-                    for packet in packets {
-                        let delay = temporal.generate_delay();
-                        
-                        // Spawn task to forward after delay
-                        tokio::spawn(async move {
-                            tokio::time::sleep(delay).await;
-                            // TODO: Forward packet to next hop
-                            tracing::trace!("Forwarding packet after {:?} delay", delay);
-                        });
-                    }
-                }
-            }
-        });
+        let mut access_token = [0u8; 32];
+        access_token.copy_from_slice(&payload[46..78]);
+
+        let message = payload[78..].to_vec();
+
+        self.dead_drop.store_message(drop_id, access_token, message)?;
+        self.stats.dead_drop_messages = self.dead_drop.stats().total_messages;
+
+        Ok(())
+    }
+
+    /// Get next output packet
+    pub fn next_output(&mut self) -> Option<(SphinxPacket, SocketAddr)> {
+        self.output_queue.pop_front()
+    }
+
+    /// Periodic maintenance
+    pub async fn maintain(&mut self) -> Result<()> {
+        self.dead_drop.cleanup_expired();
+
+        if self.mix_state.should_forward() {
+            self.forward_batch().await?;
+        }
+
+        self.stats.dead_drop_messages = self.dead_drop.stats().total_messages;
+        self.stats.current_batch_size = self.output_queue.len();
+
+        Ok(())
+    }
+
+    /// Get statistics
+    pub fn stats(&self) -> NodeStats {
+        self.stats.clone()
     }
 
     /// Get node ID
-    pub fn node_id(&self) -> &[u8; 32] {
-        &self.config.node.id
+    pub fn node_id(&self) -> [u8; 32] {
+        self.config.node_id
     }
 
-    /// Get node layer
+    /// Get layer
     pub fn layer(&self) -> u8 {
-        self.config.node.layer
-    }
-}
-
-impl Clone for RelayNode {
-    fn clone(&self) -> Self {
-        Self {
-            config: self.config.clone(),
-            state: Arc::clone(&self.state),
-            cover_traffic: CoverTrafficGenerator::new(self.config.cover_traffic.clone()),
-            temporal: TemporalDelayGenerator::new(self.config.temporal.clone()),
-        }
+        self.config.layer
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use invisible_scrambler::mixnet::{GeoLocation, Jurisdiction};
 
-    fn create_test_config() -> RelayConfig {
-        RelayConfig {
-            node: MixNode {
-                id: [0u8; 32],
-                layer: 0,
-                public_key: vec![0u8; 32],
-                address: "127.0.0.1:8080".to_string(),
-                location: GeoLocation {
-                    country: "US".to_string(),
-                    jurisdiction: Jurisdiction::PrivacyFriendly,
-                },
-            },
-            mix_strategy: MixStrategy::default(),
-            cover_traffic: CoverTrafficConfig::default(),
-            temporal: TemporalConfig::default(),
-            private_key: vec![0u8; 32],
-        }
+    fn create_test_config(layer: u8) -> NodeConfig {
+        let mut config = NodeConfig::default();
+        config.layer = layer;
+        config.node_id = [layer; 32];
+        config
     }
 
-    #[test]
-    fn test_relay_node_creation() {
-        let config = create_test_config();
-        let node = RelayNode::new(config);
-        
-        assert_eq!(node.node_id(), &[0u8; 32]);
+    #[tokio::test]
+    async fn test_node_creation() {
+        let config = create_test_config(0);
+        let node = MixNode::new(config);
+
         assert_eq!(node.layer(), 0);
+        assert_eq!(node.stats().packets_received, 0);
+    }
+
+    #[tokio::test]
+    async fn test_dead_drop_store() {
+        let config = create_test_config(0);
+        let mut node = MixNode::new(config);
+
+        let mut payload = b"DEADROP_STORE:".to_vec();
+        payload.extend_from_slice(&[1u8; 32]); // drop_id
+        payload.extend_from_slice(&[2u8; 32]); // access_token
+        payload.extend_from_slice(b"message");
+
+        node.handle_dead_drop_store(payload).unwrap();
+        assert_eq!(node.stats().dead_drop_messages, 1);
+    }
+
+    #[tokio::test]
+    async fn test_stats() {
+        let config = create_test_config(0);
+        let node = MixNode::new(config);
+
+        let stats = node.stats();
+        assert_eq!(stats.packets_received, 0);
+        assert_eq!(stats.packets_forwarded, 0);
     }
 }

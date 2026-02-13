@@ -31,7 +31,7 @@ pub type DropId = [u8; 32];
 pub type AccessToken = [u8; 32];
 
 /// Dead drop configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeadDropConfig {
     /// Message time-to-live (seconds)
     pub message_ttl: u64,

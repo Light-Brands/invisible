@@ -2,6 +2,9 @@
 name = "invisible_bridge"
 version = "0.1.0"
 edition = "2021"
+description = "FFI bridge between Flutter UI and Invisible Rust backend"
+license = "MIT OR Apache-2.0"
+publish = false
 
 # Exclude from parent workspace - this is a separate FFI bridge crate
 [workspace]
@@ -16,7 +19,7 @@ invisible_wallet = { package = "invisible-wallet", path = "../../crates/wallet" 
 invisible_scrambler = { package = "invisible-scrambler", path = "../../crates/scrambler" }
 invisible_storage = { package = "invisible-storage", path = "../../crates/storage" }
 invisible_messaging = { package = "invisible-messaging", path = "../../crates/messaging" }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
@@ -24,3 +27,4 @@ tracing = "0.1"
 
 [build-dependencies]
 flutter_rust_bridge_codegen = "2.0"
+anyhow = "1"

@@ -2,7 +2,9 @@
 /target
 **/*.rs.bk
 *.pdb
-Cargo.lock
+# Ignore Cargo.lock for library crates in workspace, but allow it for application crates
+/crates/*/Cargo.lock
+# Note: invisible_app/rust/Cargo.lock should be committed for reproducible builds
 
 # IDE
 .vscode/

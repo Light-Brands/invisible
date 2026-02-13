@@ -1,0 +1,20 @@
+# Flutter Rust Bridge configuration for Invisible FFI
+# This configures automatic Dart binding generation from Rust code
+
+# Rust crate root directory (relative to this config file)
+rust_root: .
+
+# Input Rust files - specify crate paths to FFI API modules
+rust_input: crate::api
+
+# Output path for generated Dart bindings
+dart_output: ../lib/ffi/
+
+# Use c_output for iOS/macOS C header integration
+c_output: ../ios/Runner/bridge_generated.h
+
+# Enable Dart code formatting with line length limit
+dart_format_line_length: 100
+
+# Enable modern Dart 3 features
+dart3: true

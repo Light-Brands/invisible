@@ -46,4 +46,3 @@ app.*.map.json
 
 # Rust build artifacts
 rust/target/
-rust/Cargo.lock

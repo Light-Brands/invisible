@@ -1,0 +1,14 @@
+{
+  "brandName": "Invisible",
+  "createdAt": "2026-02-12T00:00:00.000Z",
+  "updatedAt": "2026-02-12T00:00:00.000Z",
+  "createdBy": "claude-code",
+  "hasPlan": true,
+  "hasIdentity": true,
+  "originalPlanFile": "spec/MASTER-PLAN.md",
+  "originalIdentityFile": "spec/brand/01-visual-identity.md",
+  "description": "Ultra-secure, privacy-first messenger — zero-trust, zero-metadata, zero-compromise",
+  "category": "privacy-tech",
+  "techStack": ["Rust", "Flutter/Dart", "WireGuard", "libsignal", "SQLCipher"],
+  "revenueModel": "internal-use"
+}

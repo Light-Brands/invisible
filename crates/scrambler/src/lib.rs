@@ -34,6 +34,7 @@ pub mod shamir;
 pub mod temporal;
 pub mod vpn;
 pub mod camouflage;
+pub mod dead_drop;
 pub mod orchestrator;
 
 pub use error::{ScramblerError, Result};

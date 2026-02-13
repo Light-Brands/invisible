@@ -61,19 +61,24 @@
 
 ## Phase 3: Ghost VPN + Hardening (Weeks 29-36)
 
-**Goal:** Mandatory VPN layer, anti-forensics, device lockdown.
+**Goal:** Mandatory VPN layer, cellular metadata protection, anti-forensics, device lockdown.
 
-| Milestone | Description | Epic |
+| Milestone | Description | Epic/Doc |
 |-----------|-------------|------|
 | M3.1 | Ghost VPN: WireGuard integration, ephemeral keys | [epic-09](spec/epics/epic-09-ghost-vpn.md) |
 | M3.2 | Random global endpoint selection (50+ nodes) | [epic-09](spec/epics/epic-09-ghost-vpn.md) |
 | M3.3 | Session timeout + auto-lock + max lifetime | [epic-09](spec/epics/epic-09-ghost-vpn.md) |
-| M3.4 | Anti-forensics (no thumbnails, no clipboard, blank task switcher) | [epic-08](spec/epics/epic-08-hardening.md) |
-| M3.5 | Screen capture prevention (FLAG_SECURE, capture detection) | [epic-08](spec/epics/epic-08-hardening.md) |
-| M3.6 | Secure keyboard (optional built-in, no keystroke logging) | [epic-08](spec/epics/epic-08-hardening.md) |
-| M3.7 | Duress PIN + panic gesture + remote wipe | [epic-16](spec/epics/epic-16-access-control.md) |
+| M3.4 | **Network Privacy Mode: WiFi-Only mode (cellular data blocking)** | [network-privacy](spec/architecture/network-privacy-mode.md) |
+| M3.5 | **Network Privacy Mode: eSIM rotation manager (auto-rotate profiles)** | [network-privacy](spec/architecture/network-privacy-mode.md) |
+| M3.6 | **Network Privacy Mode: MAC address randomization enforcement** | [network-privacy](spec/architecture/network-privacy-mode.md) |
+| M3.7 | **Network Privacy Mode: Airplane Mode + WiFi quick toggle** | [network-privacy](spec/architecture/network-privacy-mode.md) |
+| M3.8 | **Network Privacy Mode: UI (settings screen + status bar toggle)** | [network-privacy](spec/architecture/network-privacy-mode.md) |
+| M3.9 | Anti-forensics (no thumbnails, no clipboard, blank task switcher) | [epic-08](spec/epics/epic-08-hardening.md) |
+| M3.10 | Screen capture prevention (FLAG_SECURE, capture detection) | [epic-08](spec/epics/epic-08-hardening.md) |
+| M3.11 | Secure keyboard (optional built-in, no keystroke logging) | [epic-08](spec/epics/epic-08-hardening.md) |
+| M3.12 | Duress PIN + panic gesture + remote wipe | [epic-16](spec/epics/epic-16-access-control.md) |
 
-**Deliverable:** App launches only through VPN, full anti-forensic hardening, panic features.
+**Deliverable:** App launches only through VPN, cellular metadata protection (WiFi-only/eSIM rotation/airplane mode), full anti-forensic hardening, panic features.
 
 ---
 
@@ -238,3 +243,66 @@ The Shadow Wallet already implements the full 7-layer Scrambler protection for a
 - **[spec/architecture/shadow-wallet-hardening.md](spec/architecture/shadow-wallet-hardening.md)** - Technical specifications
 
 **Result:** Wallet security will match messenger security at all layers - both network-level (already complete via Scrambler) and application-level (added through hardening).
+
+---
+
+## Network Privacy Mode (Cellular Metadata Protection)
+
+**Phase 3 now includes protection against cellular network metadata leakage.**
+
+Even with Ghost VPN encrypting all traffic, cellular carriers can still track users via IMSI/IMEI identifiers, phone numbers, and cell tower triangulation. Network Privacy Mode closes this gap with multiple protection strategies:
+
+### The Problem
+
+**What cellular carriers can see (even with VPN):**
+- IMSI (SIM card ID) - Persistent tracking across sessions
+- IMEI (Hardware ID) - Survives SIM changes
+- Phone number - Direct link to real identity
+- Cell tower location - Continuous physical tracking
+- VPN usage fingerprinting - Identifies privacy tool users
+
+### The Solutions
+
+**1. WiFi-Only Mode (M3.4)**
+- Disables cellular data completely
+- Only allows traffic over WiFi connections
+- Cellular carrier sees NO data traffic
+- Prevents VPN usage fingerprinting
+- Can use public WiFi for additional anonymity
+
+**2. eSIM Rotation (M3.5)**
+- Automatically rotates between multiple eSIM profiles
+- Each rotation = new IMSI + new phone number + new carrier
+- Rotation strategies: Per session, daily, weekly, or manual
+- Breaks long-term cellular tracking
+- Works with anonymous eSIM providers (Silent.link, Hushed, Airalo)
+
+**3. Airplane Mode + WiFi (M3.7)**
+- Cellular radio completely disabled (no IMSI/IMEI broadcast)
+- WiFi enabled for connectivity
+- Zero cellular metadata exposure
+- Cannot be tracked via cell towers or IMSI catchers
+
+**4. MAC Address Randomization (M3.6)**
+- Enforces WiFi MAC randomization (prevents access point tracking)
+- Different MAC per WiFi network
+- Breaks WiFi-based device tracking
+
+### Threat Mitigation
+
+| Threat | Ghost VPN Alone | + WiFi-Only | + eSIM Rotation | + Airplane+WiFi |
+|--------|-----------------|-------------|-----------------|-----------------|
+| Content surveillance | ✓ | ✓ | ✓ | ✓ |
+| IP address leak | ✓ | ✓ | ✓ | ✓ |
+| **IMSI tracking** | ⚠️ | ⚠️ | ✓ Rotated | ✓ Hidden |
+| **Phone # linkage** | ⚠️ | ⚠️ | ✓ Rotated | ✓ Hidden |
+| **Cell tower location** | ⚠️ | ⚠️ | ⚠️ | ✓ Hidden |
+| **VPN fingerprinting** | ⚠️ | ✓ | ⚠️ | ✓ |
+| **Long-term profiling** | ⚠️ | ✓ | ✓ | ✓ |
+
+### Documentation
+
+- **[NETWORK-PRIVACY-MODE-SUMMARY.md](NETWORK-PRIVACY-MODE-SUMMARY.md)** - Executive summary
+- **[spec/architecture/network-privacy-mode.md](spec/architecture/network-privacy-mode.md)** - Technical specification
+
+**Result:** Complete network anonymity from cellular carrier to internet destination - closes the cellular metadata gap that VPN alone cannot address.

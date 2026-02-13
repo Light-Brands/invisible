@@ -1165,6 +1165,42 @@
 
 **Deliverable:** Crypto library with full test coverage, encrypted local DB, identity system.
 
+### Team Composition - Phase 0
+
+**Active Teams:**
+- **Crypto & Core Team:** 5 engineers (100% allocation)
+- **Mobile Team:** 4 engineers (40% allocation - project setup, architecture)
+- **Backend Team:** 3 engineers (30% allocation - relay node architecture planning)
+- **Design Team:** 4 designers (25% allocation - design system foundation, onboarding flows)
+- **Security Team:** 2 engineers (50% allocation - threat modeling, crypto review)
+- **DevOps Team:** 3 engineers (75% allocation - CI/CD setup, infrastructure planning)
+
+**Total: 21 people active in Phase 0**
+
+### Sprint Breakdown - Phase 0 (4 Sprints)
+
+**Sprint 0.1 (Weeks 1-2): Project Setup + Crypto Core Foundation**
+- **Sprint Goal:** Setup development infrastructure and begin Signal Protocol implementation
+- **Key Deliverables:** X3DH key agreement, CI/CD pipeline, Flutter scaffolding, design system foundations
+- **Success Criteria:** X3DH passes NIST test vectors, CI running, local dev environment working
+
+**Sprint 0.2 (Weeks 3-4): Double Ratchet + Post-Quantum**
+- **Sprint Goal:** Complete Signal Protocol Double Ratchet and add post-quantum protection
+- **Key Deliverables:** Double Ratchet implementation, PQXDH hybrid key exchange, FFI bindings
+- **Success Criteria:** End-to-end encrypted messages working, all crypto operations constant-time
+
+**Sprint 0.3 (Weeks 5-6): Encrypted Storage + Device Identity**
+- **Sprint Goal:** Implement SQLCipher storage and device identity generation
+- **Key Deliverables:** Encrypted database, device key generation, 2FA integration
+- **Success Criteria:** Data encrypted at rest, 2FA required for app access
+
+**Sprint 0.4 (Weeks 7-8): Daily Key Rotation + Phase 0 Completion**
+- **Sprint Goal:** Implement daily master key rotation and complete Phase 0
+- **Key Deliverables:** Key rotation system, comprehensive test suite, phase retrospective
+- **Success Criteria:** All Phase 0 milestones complete, external mini-audit scheduled
+
+**Note:** Full sprint breakdowns for Phase 1-7 will be added incrementally as each phase approaches, following the same template established in Phase 0.
+
 ---
 
 ## Phase 1: Core Messaging (Weeks 9-16)
@@ -1358,6 +1394,146 @@ Phase 0 (Foundation) ──→ Phase 1 (Messaging) ──→ Phase 2 (Scrambler)
                                                ▼
                                     Phase 7 (Audit/Launch)
 ```
+
+---
+
+## Success Metrics & Monitoring
+
+**How we measure progress and health across engineering, design, security, and deployment**
+
+### Engineering Metrics
+
+**Sprint-Level**
+- Milestone delivery on time (target: 90%+)
+- Test coverage (target: 85% overall, 100% crypto/wallet)
+- Code review turnaround (target: <24 hours)
+- CI/CD pipeline success rate (target: 95%+)
+
+**Phase-Level**
+- All milestones delivered
+- No critical bugs in backlog
+- Performance benchmarks met
+- External security audit passed
+
+### Design Metrics
+
+**User Testing Success**
+- Task completion rate (target: 80%+)
+- Time to complete critical flows (target: <30 seconds to understand)
+- User satisfaction scores
+- Accessibility audit compliance (WCAG 2.1 AA)
+
+**Design QA**
+- Implementation matches design specs (100%)
+- No major usability issues identified
+- All edge cases handled
+
+### Security Metrics
+
+**Continuous Validation**
+- Security code reviews completed (100% of crypto/wallet code)
+- Vulnerability findings remediated (100% critical, 90% high)
+- Fuzzing uptime (target: 95%+ of time)
+- External audit findings per phase (target: <5 critical)
+
+**Test Coverage**
+- Crypto code: 100% branch coverage
+- Wallet code: 100% branch coverage
+- Network code: 90% coverage
+- Overall: 85%+ coverage
+
+### Deployment Metrics
+
+**CI/CD Performance**
+- PR to staging time (target: <30 minutes)
+- Staging to production time (target: <2 hours with approvals)
+- Build success rate (target: 95%+)
+- Deployment rollbacks (target: <5% of deployments)
+
+**Infrastructure Health**
+- Relay node uptime (target: 99%+)
+- VPN node uptime (target: 99.5%+)
+- Message delivery success rate (target: 99%+)
+- Average message latency (target: <45 seconds for High privacy preset)
+
+### Network Health Metrics
+
+**Decentralization**
+- Number of community relay nodes (target: 100+ by Phase 6)
+- Geographic distribution (target: 5+ continents)
+- Jurisdiction diversity (target: <20% in any single country)
+
+**Performance**
+- Network latency (P50, P95, P99)
+- Relay throughput (target: 10k messages/sec per node)
+- Cover traffic efficiency
+- Mixnet path diversity
+
+---
+
+## Risk Management & Mitigation
+
+**Identifying and mitigating risks across technical, team, security, and deployment domains**
+
+### Technical Risks
+
+**Cryptography Complexity**
+- **Risk:** Post-quantum crypto library immaturity, integration complexity
+- **Mitigation:** X25519-only fallback, extensive testing with NIST vectors, external crypto audit
+
+**Performance Bottlenecks**
+- **Risk:** 7-layer Scrambler introduces high latency, poor mobile performance
+- **Mitigation:** Benchmark every sprint, optimize hot paths, privacy level presets for user control
+
+**Platform Compatibility**
+- **Risk:** iOS/Android platform differences, hardware security module variations
+- **Mitigation:** Platform specialists on mobile team, extensive device testing, graceful degradation
+
+**Blockchain Integration**
+- **Risk:** Monero/Zcash library instability, testnet unreliability
+- **Mitigation:** Wallet team starts in Phase 2 planning, testnets + mainnet testing, fallback to mock services
+
+### Team Risks
+
+**Scaling Challenges**
+- **Risk:** Growing from 29 to 41 people, communication overhead, process breakdown
+- **Mitigation:** Clear team structure, autonomous teams, strong leads, documented processes
+
+**Knowledge Silos**
+- **Risk:** Critical knowledge concentrated in 1-2 people (crypto, wallet, mixnet)
+- **Mitigation:** Pair programming required for crypto, documentation culture, knowledge shares
+
+**Burnout**
+- **Risk:** 88-week timeline, high-pressure security work, continuous red team attacks
+- **Mitigation:** No-meeting deep work blocks, flexible schedules, phase-end retrospectives
+
+### Security Risks
+
+**Undiscovered Vulnerabilities**
+- **Risk:** Critical security flaw discovered late in development or after launch
+- **Mitigation:** Security in every sprint, red team attacks, external audits, bug bounty program
+
+**Side-Channel Attacks**
+- **Risk:** Timing attacks, cache-timing attacks, power analysis on crypto operations
+- **Mitigation:** Constant-time operations, valgrind verification, formal verification for critical paths
+
+**Supply Chain Attacks**
+- **Risk:** Compromised dependencies, malicious crates, backdoors in libraries
+- **Mitigation:** cargo-audit in CI, dependency pinning, minimize dependencies, audit critical deps
+
+### Deployment Risks
+
+**App Store Rejections**
+- **Risk:** Apple/Google reject app for privacy features, VPN usage, crypto wallet
+- **Mitigation:** Early TestFlight submission, compliance review, F-Droid + direct APK as fallback
+
+**Node Operator Adoption**
+- **Risk:** Insufficient community relay nodes, centralization risk
+- **Mitigation:** One-click deployment, economic incentives, early community building
+
+**Regulatory Challenges**
+- **Risk:** Legal challenges in certain jurisdictions, forced shutdown
+- **Mitigation:** Decentralized architecture, reproducible builds, open source, jurisdiction diversity
 
 ---
 

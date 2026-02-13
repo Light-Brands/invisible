@@ -1,0 +1,46 @@
+[package]
+name = "invisible-storage"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Core crypto
+invisible-crypto = { path = "../crypto" }
+
+# SQLCipher (encrypted SQLite)
+rusqlite = { version = "0.31", features = ["bundled-sqlcipher"] }
+
+# Migrations
+refinery = { version = "0.8", features = ["rusqlite"] }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Cryptography
+zeroize = { workspace = true }
+argon2 = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.8"
+
+[lib]
+name = "invisible_storage"
+path = "src/lib.rs"

@@ -32,6 +32,9 @@ secrets/
 # Logs
 *.log
 
+# BMad output artifacts
+_bmad-output/
+
 # OS
 .DS_Store
 Thumbs.db

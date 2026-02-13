@@ -51,7 +51,7 @@ impl Database {
         conn.pragma_update(None, "cipher_kdf_algorithm", &"PBKDF2_HMAC_SHA512")?;
 
         // Verify encryption is working
-        conn.execute("SELECT count(*) FROM sqlite_master", [])?;
+        conn.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(()))?;
 
         let mut db = Self { conn, config };
 

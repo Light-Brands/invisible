@@ -30,4 +30,4 @@ pub mod btc;
 pub mod xmr;
 
 pub use error::{WalletError, Result};
-pub use wallet::{ShadowWallet, WalletConfig, Balance};
+pub use wallet::{ShadowWallet, WalletConfig, Balance, Currency};

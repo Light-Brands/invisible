@@ -5,7 +5,7 @@ use tokio::sync::RwLock;
 
 use invisible_crypto::IdentityKey;
 use invisible_storage::Database;
-use invisible_wallet::HDWallet;
+use invisible_wallet::ShadowWallet;
 
 use crate::Result;
 
@@ -15,8 +15,8 @@ pub struct InvisibleClient {
     identity: Arc<RwLock<Option<IdentityKey>>>,
     /// Storage database
     storage: Arc<Database>,
-    /// HD wallet
-    wallet: Arc<RwLock<Option<HDWallet>>>,
+    /// Shadow wallet
+    wallet: Arc<RwLock<Option<ShadowWallet>>>,
     /// Configuration
     config: ClientConfig,
 }
@@ -61,7 +61,7 @@ impl InvisibleClient {
     }
 
     /// Initialize wallet
-    pub async fn init_wallet(&self, wallet: HDWallet) -> Result<()> {
+    pub async fn init_wallet(&self, wallet: ShadowWallet) -> Result<()> {
         let mut w = self.wallet.write().await;
         *w = Some(wallet);
         Ok(())

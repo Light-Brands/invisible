@@ -1,6 +1,6 @@
 //! Contact storage operations
 
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
 use crate::database::Database;

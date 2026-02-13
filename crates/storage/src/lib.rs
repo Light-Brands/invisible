@@ -38,4 +38,4 @@ pub mod wallet;
 pub mod migrations;
 
 pub use error::{StorageError, Result};
-pub use database::Database;
+pub use database::{Database, DatabaseConfig};

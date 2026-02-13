@@ -80,8 +80,49 @@ fn derive_keys(shared_secret: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
 }
 
 
-/// Encrypt data using ChaCha20-Poly1305
-fn encrypt_chacha(key: &[u8], plaintext: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
+/// Encrypt routing data using stream cipher (XOR with keystream)
+/// This avoids the size expansion from AEAD tags
+fn encrypt_routing(key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>> {
+    use ring::hkdf;
+
+    // Derive a keystream from the key using HKDF
+    let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, b"");
+    let prk = salt.extract(key);
+    let info: &[&[u8]] = &[b"SphinxRouting"];
+    let okm = prk
+        .expand(info, MyLen(plaintext.len()))
+        .map_err(|_| ScramblerError::SphinxError("Key expansion failed".to_string()))?;
+
+    let mut keystream = vec![0u8; plaintext.len()];
+    okm.fill(&mut keystream)
+        .map_err(|_| ScramblerError::SphinxError("Keystream generation failed".to_string()))?;
+
+    // XOR plaintext with keystream
+    let mut ciphertext = plaintext.to_vec();
+    for (c, k) in ciphertext.iter_mut().zip(keystream.iter()) {
+        *c ^= k;
+    }
+
+    Ok(ciphertext)
+}
+
+/// Decrypt routing data (XOR is its own inverse)
+fn decrypt_routing(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+    // XOR is symmetric, so decrypt = encrypt
+    encrypt_routing(key, ciphertext)
+}
+
+/// Helper struct for HKDF output length
+struct MyLen(usize);
+
+impl ring::hkdf::KeyType for MyLen {
+    fn len(&self) -> usize {
+        self.0
+    }
+}
+
+/// Encrypt payload using ChaCha20-Poly1305 AEAD
+fn encrypt_payload(key: &[u8], plaintext: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
     let unbound_key = UnboundKey::new(&CHACHA20_POLY1305, key)
         .map_err(|_| ScramblerError::SphinxError("Invalid encryption key".to_string()))?;
 
@@ -100,8 +141,8 @@ fn encrypt_chacha(key: &[u8], plaintext: &[u8], associated_data: &[u8]) -> Resul
     Ok(in_out)
 }
 
-/// Decrypt data using ChaCha20-Poly1305
-fn decrypt_chacha(key: &[u8], ciphertext: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
+/// Decrypt payload using ChaCha20-Poly1305 AEAD
+fn decrypt_payload(key: &[u8], ciphertext: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
     let unbound_key = UnboundKey::new(&CHACHA20_POLY1305, key)
         .map_err(|_| ScramblerError::SphinxError("Invalid decryption key".to_string()))?;
 
@@ -113,15 +154,12 @@ fn decrypt_chacha(key: &[u8], ciphertext: &[u8], associated_data: &[u8]) -> Resu
     let opening_key = LessSafeKey::new(unbound_key);
     let mut in_out = ciphertext.to_vec();
 
-    opening_key
+    let plaintext = opening_key
         .open_in_place(nonce, Aad::from(associated_data), &mut in_out)
         .map_err(|_| ScramblerError::SphinxError("Decryption failed".to_string()))?;
 
-    // Remove authentication tag
-    let plaintext_len = in_out.len() - CHACHA20_POLY1305.tag_len();
-    in_out.truncate(plaintext_len);
-
-    Ok(in_out)
+    // open_in_place returns a slice to the decrypted data (tag already removed)
+    Ok(plaintext.to_vec())
 }
 
 /// Build a Sphinx packet
@@ -195,9 +233,8 @@ pub fn build_packet(route: &RouteSpec, message: &[u8]) -> Result<SphinxPacket> {
             routing_info = layer;
         }
 
-        // Encrypt this layer
-        routing_info = encrypt_chacha(&enc_key, &routing_info, b"SphinxHeader")?;
-        routing_info.resize(HEADER_SIZE, 0);
+        // Encrypt this layer using stream cipher (no size expansion)
+        routing_info = encrypt_routing(&enc_key, &routing_info)?;
     }
 
     // Step 5: Compute MAC for first hop
@@ -215,18 +252,15 @@ pub fn build_packet(route: &RouteSpec, message: &[u8]) -> Result<SphinxPacket> {
         mac,
     };
 
-    // Step 6: Encrypt payload using layered encryption
+    // Step 6: Encrypt payload using stream cipher in layers (no size expansion)
     let mut payload = vec![0u8; PAYLOAD_SIZE];
     payload[..message.len()].copy_from_slice(message);
 
     // Encrypt payload in layers (innermost first)
     for i in (0..num_hops).rev() {
         let (enc_key, _) = derive_keys(&shared_secrets[i])?;
-        let encrypted = encrypt_chacha(&enc_key, &payload, b"SphinxPayload")?;
-
-        // Copy back and pad
-        payload = encrypted;
-        payload.resize(PAYLOAD_SIZE, 0);
+        // Use stream cipher to avoid size expansion
+        payload = encrypt_routing(&enc_key, &payload)?;
     }
 
     Ok(SphinxPacket { header, payload })
@@ -269,7 +303,7 @@ pub fn process_packet(
     // If MAC is zeros, skip verification (intermediate hops in our simplified protocol)
 
     // Step 5: Decrypt one layer of routing info
-    let decrypted_routing = decrypt_chacha(&enc_key, &packet.header.routing_info, b"SphinxHeader")?;
+    let decrypted_routing = decrypt_routing(&enc_key, &packet.header.routing_info)?;
 
     // Extract next hop address (first 32 bytes)
     let mut next_hop = vec![0u8; 32];
@@ -283,7 +317,7 @@ pub fn process_packet(
 
     if is_final {
         // Step 7a: Decrypt payload and deliver
-        let decrypted_payload = decrypt_chacha(&enc_key, &packet.payload, b"SphinxPayload")?;
+        let decrypted_payload = decrypt_routing(&enc_key, &packet.payload)?;
 
         // Remove padding (find first zero after message)
         let message_len = decrypted_payload
@@ -301,9 +335,8 @@ pub fn process_packet(
         let mut new_routing_info = remaining_encrypted.to_vec();
         new_routing_info.resize(HEADER_SIZE, 0);
 
-        // Compute MAC for next hop
-        // Next hop will verify with its own shared secret
-        let new_mac = [0u8; 32]; // Placeholder - proper Sphinx would layer MACs
+        // Compute MAC for next hop (zeros for now - proper Sphinx would layer MACs)
+        let new_mac = [0u8; 32];
 
         let new_header = SphinxHeader {
             ephemeral_key: packet.header.ephemeral_key,
@@ -311,10 +344,8 @@ pub fn process_packet(
             mac: new_mac,
         };
 
-        // Decrypt one layer of payload
-        let decrypted_payload = decrypt_chacha(&enc_key, &packet.payload, b"SphinxPayload")?;
-        let mut new_payload = decrypted_payload;
-        new_payload.resize(PAYLOAD_SIZE, 0);
+        // Decrypt one layer of payload using stream cipher
+        let new_payload = decrypt_routing(&enc_key, &packet.payload)?;
 
         let transformed_packet = SphinxPacket {
             header: new_header,
@@ -349,6 +380,25 @@ pub enum ProcessedPacket {
 mod tests {
     use super::*;
     use invisible_crypto::keys::KeyPair;
+
+    #[test]
+    fn test_encrypt_decrypt_roundtrip() {
+        // Test routing encryption (stream cipher)
+        let key = vec![1u8; 32];
+        let plaintext = b"Hello, Sphinx routing!";
+
+        let ciphertext = encrypt_routing(&key, plaintext).unwrap();
+        let decrypted = decrypt_routing(&key, &ciphertext).unwrap();
+        assert_eq!(&decrypted, plaintext);
+
+        // Test payload encryption (AEAD)
+        let plaintext2 = b"Hello, Sphinx payload!";
+        let ad = b"associated data";
+
+        let ciphertext2 = encrypt_payload(&key, plaintext2, ad).unwrap();
+        let decrypted2 = decrypt_payload(&key, &ciphertext2, ad).unwrap();
+        assert_eq!(&decrypted2, plaintext2);
+    }
 
     #[test]
     fn test_packet_size_limits() {

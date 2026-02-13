@@ -655,8 +655,504 @@
 
 ---
 
-## Phase 0: Foundation (Weeks 1-8)
+## Deployment & Infrastructure Strategy
 
+**Core Principle: Deployment automation from day one, production-ready infrastructure**
+
+### Deployment Environments
+
+**1. Local Development**
+- **Docker Compose** setup for complete local environment
+- Local relay node, local VPN endpoint, local database
+- Hot reload for rapid development
+- Mock services for blockchain/external APIs
+- One command setup: `./scripts/dev-setup.sh`
+
+**2. CI/CD (Continuous Integration)**
+- **GitHub Actions** for all automation
+- Runs on every PR: lints, tests, security scans
+- Build artifacts stored with commit hash
+- Reproducible builds verified
+- Auto-deploy to staging on main branch merge
+
+**3. Internal Staging**
+- Production-like environment for team testing
+- Real relay nodes (3-5 nodes), real VPN nodes
+- Testnet blockchains (Bitcoin testnet, Ethereum Sepolia)
+- Updated automatically from main branch
+- Team uses this for dogfooding Invisible
+
+**4. External Beta (Phase 7)**
+- Limited release to beta testers
+- Separate infrastructure from internal staging
+- Real mainnet blockchains (with warnings)
+- Monitoring and crash reporting
+- Opt-in for external testers
+
+**5. Production (Phase 7)**
+- Full production deployment
+- Community-operated relay/VPN nodes
+- Mainnet blockchains
+- App store releases (iOS App Store, Google Play, F-Droid)
+- Multiple regions, high availability
+
+### Infrastructure Architecture
+
+**Mobile App Deployment:**
+
+**iOS**
+- **Xcode Cloud** for builds
+- **TestFlight** for internal testing (Phase 0+)
+- **TestFlight** for external beta (Phase 7)
+- **App Store** for production (Phase 7)
+- **Reproducible builds**: Anyone can verify binary matches source
+- **Automatic updates** via App Store
+
+**Android**
+- **GitHub Actions** for builds
+- **Internal distribution** via Firebase App Distribution (Phase 0+)
+- **Google Play Internal Testing** (Phase 6)
+- **Google Play Beta** (Phase 7)
+- **Google Play Production** (Phase 7)
+- **F-Droid** for open source distribution (Phase 7)
+- **APK direct download** for users in restricted countries
+- **Reproducible builds** verified
+
+**Relay Node Deployment:**
+
+**Infrastructure as Code**
+- **Terraform** for cloud infrastructure
+- **Ansible** for node configuration
+- Support AWS, GCP, Azure, DigitalOcean, Vultr, Linode
+- Support bare metal deployment
+
+**One-Click Deploy for Community Operators**
+- **Docker image** pre-configured relay node
+- **Docker Compose** template for easy setup
+- **Kubernetes Helm chart** for production deployments
+- **Systemd service** for bare metal
+- Configuration via environment variables
+- Automated updates (opt-in)
+
+**Node Requirements**
+- Minimum: 2 CPU, 4GB RAM, 100GB SSD, 1Gbps network
+- Recommended: 4 CPU, 8GB RAM, 500GB SSD, 10Gbps network
+- RAM-only operation (no disk writes)
+- Automatic health monitoring
+- Geographic diversity tracking
+
+**VPN Node Deployment:**
+
+**WireGuard VPN Nodes**
+- Same deployment process as relay nodes
+- Pre-configured WireGuard setup
+- Automated key rotation
+- Multiple exit locations (50+ initially)
+- Load balancing across regions
+- No logs, RAM-only
+
+**Geographic Distribution**
+- Minimum 3 continents
+- Avoid Five Eyes concentration
+- Jurisdiction diversity (no more than 20% in same country)
+- Automatic endpoint selection for clients
+
+### CI/CD Pipeline
+
+**On every commit to feature branch:**
+1. **Lint**: rustfmt, clippy, Flutter analyzer
+2. **Unit Tests**: Full test suite (<5 min)
+3. **Security Scan**: cargo-audit, dependency checks
+4. **Build**: Debug build for all platforms
+
+**On every PR:**
+1. All of the above, plus:
+2. **Integration Tests**: Full integration test suite (~15 min)
+3. **Fuzzing**: Short fuzzing run (10 min)
+4. **Performance Tests**: Benchmark suite, check for regressions
+5. **Code Review**: Required approvals based on code type
+6. **Security Review**: For crypto/wallet/network code
+
+**On merge to main branch:**
+1. All of the above, plus:
+2. **Build Release Artifacts**:
+   - iOS IPA (signed for TestFlight)
+   - Android APK + AAB (signed)
+   - Relay node Docker image
+   - VPN node Docker image
+3. **Deploy to Internal Staging**: Automatic deployment
+4. **Run Smoke Tests**: Critical user flows on staging
+5. **Tag Release**: Create git tag with version
+
+**On git tag (release):**
+1. **Build Production Artifacts**: Reproducible builds
+2. **Sign Artifacts**: Code signing for all platforms
+3. **Upload to Distribution**:
+   - iOS → TestFlight or App Store
+   - Android → Play Console or F-Droid
+   - Docker → Docker Hub
+4. **Create Release Notes**: Auto-generated changelog
+5. **Notify Team**: Slack/Discord notification
+
+### Monitoring & Observability
+
+**Application Monitoring**
+- **Sentry** for crash reporting (privacy-preserving mode)
+- **Custom metrics** for privacy features (relay success rate, VPN uptime)
+- **No user tracking**: Zero analytics on user behavior
+- **Performance monitoring**: Client-side latency, battery usage
+
+**Infrastructure Monitoring**
+- **Prometheus + Grafana** for metrics
+- **Alerting**: PagerDuty for critical issues
+- **Uptime monitoring**: Pingdom or UptimeRobot for relay/VPN nodes
+- **Log aggregation**: Loki (logs from nodes only, no user data)
+
+**Privacy-Preserving Metrics**
+- Network health (relay uptime, latency distribution)
+- Success rates (message delivery, VPN connection)
+- No user identifiers in any metrics
+- Aggregate statistics only
+
+### Deployment Runbooks
+
+**Mobile App Release**
+1. Merge release branch to main
+2. Tag release (triggers CI/CD)
+3. Review builds in TestFlight/Internal Testing
+4. QA approval (smoke tests on real devices)
+5. Submit to App Store/Play Store
+6. Monitor crash reports for 48 hours
+7. Rollout to 100% if no critical issues
+
+**Relay Node Deployment**
+1. Build Docker image (automated)
+2. Deploy to staging relay cluster
+3. Monitor for 24 hours
+4. Deploy to 10% of production relays (canary)
+5. Monitor for 48 hours
+6. Rollout to 100% if healthy
+7. Rollback procedure: `kubectl rollout undo`
+
+**Incident Response**
+1. Alert received (PagerDuty)
+2. On-call engineer triages (severity assessment)
+3. Create incident channel (Slack)
+4. Investigate and mitigate
+5. Post-mortem document (within 48 hours)
+6. Action items tracked and completed
+
+### Easy Deployment Promise
+
+**For end users:**
+- Download from App Store: 2 taps
+- Onboarding: <2 minutes
+- First message sent: <5 minutes from download
+
+**For community node operators:**
+- Setup time: <15 minutes
+- One command: `docker-compose up -d`
+- Automated updates (opt-in)
+- Monitoring dashboard included
+
+**For developers:**
+- Local dev setup: <10 minutes (`./scripts/dev-setup.sh`)
+- PR to staging: <30 minutes (automated)
+- Staging to production: <2 hours (with approvals)
+
+---
+
+## Communication & Collaboration
+
+**Core Principle: Transparent communication, autonomous teams, clear ownership**
+
+### Communication Channels
+
+**Synchronous Communication**
+
+**Daily Standups (15 min per team)**
+- **Time**: 9:30 AM (each team picks their time)
+- **Format**: What I did, what I'm doing, blockers
+- **Rule**: No problem-solving in standup (take it offline)
+- **Attendance**: Team members only (not company-wide)
+
+**Weekly Cross-Team Sync (1 hour)**
+- **Time**: Fridays 2pm
+- **Attendees**: All team leads + architects
+- **Agenda**:
+  - Sprint demos from each team
+  - Cross-team dependencies discussion
+  - Upcoming blockers
+  - Architecture decisions needed
+- **Output**: Action items with owners
+
+**Design/Eng Sync (15 min daily)**
+- **Time**: 10:30 AM
+- **Attendees**: Design team + relevant eng teams
+- **Purpose**: Catch implementation issues early
+- **Format**: Quick design QA, questions, clarifications
+
+**Security Review Sessions (2x per week)**
+- **Time**: Tuesday & Thursday 3pm
+- **Duration**: 1-2 hours
+- **Format**: Code walkthrough for crypto/wallet/network changes
+- **Attendees**: Security team + code authors
+
+**Asynchronous Communication**
+
+**Slack/Discord Organization**
+- `#general` - Company announcements
+- `#engineering` - General engineering discussion
+- `#design` - Design team coordination
+- `#security` - Security findings and discussions
+- `#phase-N` - Per-phase channels (archive when phase completes)
+- `#team-crypto` - Crypto team
+- `#team-mobile` - Mobile team
+- `#team-backend` - Backend team
+- `#team-wallet` - Wallet team
+- `#incidents` - Production issues
+- `#releases` - Release notifications
+
+**Documentation**
+
+**Living Documentation (always up-to-date)**
+- `/docs/architecture/` - Architecture decision records (ADRs)
+- `/docs/api/` - API documentation (auto-generated)
+- `/docs/security/` - Threat models, security reviews
+- `/docs/design/` - Design system, UI specifications
+- `/docs/onboarding/` - New team member guides
+- `/docs/runbooks/` - Operational procedures
+
+**Decision Records (ADRs)**
+- Document significant technical decisions
+- Format: Context, Decision, Consequences
+- Stored in git, versioned with code
+- Reviewed in architecture sync
+
+### Meeting Cadence
+
+**Sprint Ceremonies (every 2 weeks)**
+- **Sprint Planning** (Monday Week 1, 4 hours)
+- **Sprint Demo** (Thursday Week 2, 1 hour)
+- **Sprint Retrospective** (Friday Week 2, 1 hour)
+
+**Design Reviews (weekly)**
+- **Design Critique** (Wednesdays, 2 hours)
+- **Design/Eng Handoff** (Fridays, 1 hour)
+- **User Testing Readouts** (Fridays, 30 min)
+
+**Security & Architecture (weekly)**
+- **Threat Modeling** (Mondays, 1 hour)
+- **Security Code Review** (Tuesday/Thursday, 1-2 hours each)
+- **Architecture Sync** (Fridays, 1 hour)
+
+**No-Meeting Time**
+- **Deep Work Blocks**: Tuesdays & Thursdays 10am-2pm
+- No meetings scheduled during deep work blocks
+- Engineers can focus on complex problems uninterrupted
+
+### Code Review Process
+
+**Pull Request Guidelines**
+
+**PR Size**
+- Target: <500 lines changed
+- Maximum: 1000 lines (break up larger changes)
+- Exception: Generated code (must note in PR description)
+
+**PR Description Must Include**
+- What: What does this change do?
+- Why: Why is this change needed?
+- How: Brief overview of approach
+- Testing: How was this tested?
+- Screenshots: For UI changes
+- Security: Any security implications?
+
+**Review Requirements (varies by code type)**
+
+**Regular Code**
+- 1 engineer approval required
+- CI must pass
+- No merge conflicts
+
+**Security-Sensitive Code (crypto/wallet/auth)**
+- 2 security engineer approvals required
+- 1 domain expert approval required
+- Security checklist completed
+- CI must pass
+
+**UI Code**
+- 1 engineer approval required
+- 1 designer approval required
+- Visual regression tests pass
+- Accessibility checklist completed
+
+**Review SLA**
+- First review within 4 hours (during work hours)
+- Approval or feedback within 24 hours
+- No PR should wait >48 hours
+
+**Review Etiquette**
+- ✅ Be constructive, not critical
+- ✅ Ask questions, don't make demands
+- ✅ Approve if "good enough", don't nitpick
+- ✅ Distinguish between "must fix" and "nice to have"
+- ❌ Don't bikeshed (argue about trivial style issues)
+
+### Knowledge Sharing
+
+**Weekly Knowledge Shares (Fridays 3pm, 30 min)**
+- Rotating presentations from team members
+- Topics: New techniques, lessons learned, interesting problems solved
+- Optional attendance but encouraged
+- Recorded for async viewing
+
+**Pair Programming**
+- **Required**: All crypto code must be pair programmed
+- **Encouraged**: Complex algorithms, new domains
+- **Tools**: VS Code Live Share, Tuple, Screen sharing
+
+**Documentation Culture**
+- Every feature needs documentation before merging
+- Update docs when code changes
+- README files in every directory
+- Code comments explain "why", not "what"
+
+**Onboarding Buddies**
+- New team members get assigned buddy
+- Buddy helps with setup, answers questions, reviews first PRs
+- Weekly check-ins for first month
+
+### Conflict Resolution
+
+**Technical Disagreements**
+1. Discuss in relevant channel (Slack/Discord)
+2. If no consensus in 24 hours → schedule sync meeting
+3. If still no consensus → escalate to Tech Lead
+4. Tech Lead makes final call, documents decision in ADR
+
+**Process Issues**
+1. Raise in sprint retrospective
+2. Team discusses and votes on changes
+3. Try new process for 2 sprints
+4. Evaluate in retro, keep or revert
+
+**Cross-Team Blockers**
+1. Raise in weekly cross-team sync
+2. Team leads negotiate solution
+3. If no resolution → escalate to Product Lead
+4. Document resolution and update plans
+
+### Remote/Hybrid Work
+
+**Work Schedule**
+- **Core hours**: 10am-3pm (local time) - overlap time
+- **Flexible**: Teams can adjust based on timezone needs
+- **Async-first**: Assume not everyone is online at once
+
+**Time Zones**
+- Document each team member's timezone
+- Schedule meetings during overlap hours
+- Record important meetings for async viewing
+- Use async communication (docs, Slack) when possible
+
+**In-Person (if applicable)**
+- Optional quarterly team gatherings
+- Sprint planning can be in-person if preferred
+- Design sprints benefit from in-person collaboration
+
+### Tools & Platforms
+
+**Development**
+- **Git**: GitHub for code hosting
+- **CI/CD**: GitHub Actions
+- **Code Review**: GitHub PRs
+- **IDE**: VS Code (recommended), any preferred
+
+**Design**
+- **Design Tool**: Figma (single source of truth)
+- **Prototyping**: Figma, ProtoPie
+- **User Testing**: UserTesting.com, Maze
+
+**Communication**
+- **Chat**: Slack or Discord
+- **Video**: Zoom or Google Meet
+- **Async Video**: Loom for demos/walkthroughs
+
+**Project Management**
+- **Sprints**: Jira or Linear
+- **Roadmap**: ProductBoard or Notion
+- **Documentation**: Notion or GitBook
+
+**Monitoring**
+- **Errors**: Sentry
+- **Metrics**: Grafana
+- **Incidents**: PagerDuty
+
+---
+
+## Technology Stack & Tools
+
+*(Enhanced from existing CLAUDE.md content)*
+
+### Core Technologies
+
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Crypto core | Rust (libsignal-protocol, ring, ML-KEM) | Memory safety, performance, no GC |
+| Mobile clients | Flutter/Dart | Cross-platform, single codebase |
+| Relay/mix nodes | Rust (tokio async) | Performance, safety, small binary |
+| VPN protocol | WireGuard | Audited, minimal, fast |
+| Packet format | Sphinx (2KB uniform) | Proven mixnet packet format |
+| Local storage | SQLCipher + Argon2id | Encrypted SQLite, memory-hard KDF |
+| Networking | libp2p | Proven P2P networking stack |
+| Transports | obfs5, uTLS | DPI resistance |
+| Calls | WebRTC + custom SRTP | Standard media + custom key exchange |
+| Wallet | monero-rs, rust-bitcoin, ethers-rs | Native Rust chain libraries |
+| Swaps | COMIT HTLC | Proven atomic swap infrastructure |
+| DeFi | WalletConnect v2 | Standard wallet connection |
+| 2FA | TOTP (RFC 6238) + FIDO2 | Standard, proven second factors |
+| Build | Reproducible builds | Verifiable binaries, trust through transparency |
+
+### Development Tools
+
+- **Version Control**: Git, GitHub
+- **CI/CD**: GitHub Actions
+- **IDE**: VS Code (recommended), any editor
+- **Linting**: rustfmt, clippy, Flutter analyzer
+- **Testing**: cargo test, criterion (benchmarks), proptest (property testing)
+
+### Design Tools
+
+- **Design**: Figma (single source of truth)
+- **Prototyping**: Figma, ProtoPie
+- **User Testing**: UserTesting.com, Maze
+- **Accessibility**: WAVE, Axe DevTools
+
+### Communication Tools
+
+- **Chat**: Slack or Discord
+- **Video**: Zoom or Google Meet
+- **Async**: Loom for demos and walkthroughs
+- **Docs**: Notion or GitBook
+
+### Project Management Tools
+
+- **Sprints**: Jira or Linear
+- **Roadmap**: ProductBoard or Notion
+- **Design Handoff**: Figma + Zeplin
+
+### Monitoring Tools
+
+- **Application**: Sentry (crash reporting)
+- **Infrastructure**: Prometheus + Grafana
+- **Uptime**: Pingdom or UptimeRobot
+- **Incidents**: PagerDuty
+- **Logs**: Loki (infrastructure only, no user data)
+
+---
+
+## Phase 0: Foundation (Weeks 1-8)
 **Goal:** Core cryptographic primitives and local-first architecture.
 
 | Milestone | Description | Epic |

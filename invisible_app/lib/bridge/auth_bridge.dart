@@ -8,23 +8,27 @@ class AuthBridge {
   ///
   /// Returns the Argon2 hash string suitable for storage.
   /// The hash includes the salt and algorithm parameters.
-  static String hashPin(String pin) {
-    return authHashPin(pin: pin);
+  ///
+  /// SECURITY: Async to prevent blocking UI thread during ~100-500ms Argon2 computation.
+  static Future<String> hashPin(String pin) async {
+    return await authHashPin(pin: pin);
   }
 
   /// Verify a PIN against a stored Argon2 hash
   ///
   /// Returns true if the PIN matches the stored hash, false otherwise.
-  static bool verifyPin(String pin, String storedHash) {
-    return authVerifyPin(pin: pin, storedHash: storedHash);
+  ///
+  /// SECURITY: Async to prevent blocking UI thread during ~100-500ms Argon2 computation.
+  static Future<bool> verifyPin(String pin, String storedHash) async {
+    return await authVerifyPin(pin: pin, storedHash: storedHash);
   }
 
   /// Generate a new TOTP secret (base32 encoded)
   ///
   /// Returns a 20-byte secret encoded in base32 without padding,
   /// suitable for use with authenticator apps.
-  static String generate2FASecret() {
-    return authGenerate2FaSecret();
+  static Future<String> generate2FASecret() async {
+    return await authGenerate2FaSecret();
   }
 
   /// Verify a TOTP code against a secret
@@ -33,7 +37,7 @@ class AuthBridge {
   /// to account for clock drift.
   ///
   /// Returns true if the code is valid, false otherwise.
-  static bool verify2FACode(String secret, String code) {
-    return authVerify2FaCode(secret: secret, code: code);
+  static Future<bool> verify2FACode(String secret, String code) async {
+    return await authVerify2FaCode(secret: secret, code: code);
   }
 }

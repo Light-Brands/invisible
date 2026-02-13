@@ -11,6 +11,9 @@ class LockScreen extends ConsumerStatefulWidget {
 }
 
 class _LockScreenState extends ConsumerState<LockScreen> {
+  // TODO: SECURITY - PIN stored in plain Dart String cannot be wiped from memory
+  // Limitation: Dart strings are immutable and GC-managed, so we can't zeroize them
+  // Mitigation: Minimize exposure time, consider streaming Argon2 hashing per digit
   String _pin = '';
 
   void _onNumberPress(String number) {
@@ -34,60 +37,39 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   }
 
   Future<void> _verifyPin() async {
-    final success = await ref.read(authProvider.notifier).unlockWithPin(_pin);
-    if (!success) {
-      final failedAttempts = ref.read(authProvider).failedAttempts;
+    try {
+      final success = await ref.read(authProvider.notifier).unlockWithPin(_pin);
+      if (!success) {
+        final failedAttempts = ref.read(authProvider).failedAttempts;
+        if (mounted) {
+          // SECURITY: Panic wipe happens automatically at 5 failed attempts
+          // No dialog to cancel - this is by design for security
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Incorrect PIN. Attempts: $failedAttempts/5'),
+              backgroundColor: AppTheme.errorRed,
+            ),
+          );
+          setState(() {
+            _pin = '';
+          });
+        }
+      }
+    } catch (e) {
+      // Handle rate limiting errors
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Incorrect PIN. Attempts: $failedAttempts/5'),
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
             backgroundColor: AppTheme.errorRed,
+            duration: const Duration(seconds: 3),
           ),
         );
         setState(() {
           _pin = '';
         });
-
-        if (failedAttempts >= 5) {
-          _showTooManyAttemptsDialog();
-        }
       }
     }
-  }
-
-  void _showTooManyAttemptsDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Too Many Failed Attempts'),
-        content: const Text(
-          'For security, you must wait 30 seconds before trying again.\n\n'
-          'If you\'ve forgotten your PIN, you can reset the app, but this will erase all local data.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _pin = '';
-              });
-            },
-            child: const Text('Wait'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await ref.read(authProvider.notifier).reset();
-              if (context.mounted) {
-                Navigator.pop(context);
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: AppTheme.errorRed),
-            child: const Text('Reset App'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override

@@ -47,7 +47,7 @@ class AuthNotifier extends StateNotifier<AuthSession> {
   /// Set PIN using real Argon2 hashing
   Future<void> setPin(String pin) async {
     try {
-      final hashedPin = AuthBridge.hashPin(pin);
+      final hashedPin = await AuthBridge.hashPin(pin);
       await SecureStorage.storePin(hashedPin);
 
       state = state.copyWith(
@@ -62,11 +62,18 @@ class AuthNotifier extends StateNotifier<AuthSession> {
 
   /// Unlock app with PIN using real Argon2 verification
   Future<bool> unlockWithPin(String pin) async {
+    // SECURITY: Check rate limiting before allowing attempt
+    final waitSeconds = await SecureStorage.getRequiredWaitSeconds();
+    if (waitSeconds > 0) {
+      throw Exception('Please wait $waitSeconds seconds before trying again');
+    }
+
     final storedHash = await SecureStorage.getPin();
     if (storedHash == null) return false;
 
-    final valid = AuthBridge.verifyPin(pin, storedHash);
+    final valid = await AuthBridge.verifyPin(pin, storedHash);
     if (valid) {
+      await SecureStorage.clearFailedAttempts();
       state = state.copyWith(
         state: AuthState.unlocked,
         lastUnlockTime: DateTime.now(),
@@ -74,14 +81,17 @@ class AuthNotifier extends StateNotifier<AuthSession> {
       );
       return true;
     } else {
+      await SecureStorage.recordFailedAttempt();
+
+      // SECURITY: Check BEFORE incrementing to ensure panic wipe at 5th attempt, not 6th
+      if (state.failedAttempts + 1 >= 5) {
+        await panicWipe();
+        return false; // Exit immediately after wipe
+      }
+
       state = state.copyWith(
         failedAttempts: state.failedAttempts + 1,
       );
-
-      // Trigger panic wipe after 5 failed attempts
-      if (state.failedAttempts >= 5) {
-        await panicWipe();
-      }
 
       return false;
     }
@@ -89,7 +99,9 @@ class AuthNotifier extends StateNotifier<AuthSession> {
 
   /// Setup 2FA with real TOTP secret generation
   Future<String> setup2FA() async {
-    final secret = AuthBridge.generate2FASecret();
+    final secret = await AuthBridge.generate2FASecret();
+    // TODO: SECURITY - Encrypt 2FA secret with PIN-derived key before storage
+    // Currently relies solely on OS keychain security
     await SecureStorage.store2FASecret(secret);
 
     state = state.copyWith(
@@ -104,7 +116,7 @@ class AuthNotifier extends StateNotifier<AuthSession> {
     final secret = await SecureStorage.get2FASecret();
     if (secret == null) return false;
 
-    return AuthBridge.verify2FACode(secret, code);
+    return await AuthBridge.verify2FACode(secret, code);
   }
 
   /// Complete 2FA setup after verification

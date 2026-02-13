@@ -11,6 +11,9 @@ class PinSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
+  // TODO: SECURITY - PIN stored in plain Dart String cannot be wiped from memory
+  // Limitation: Dart strings are immutable and GC-managed, so we can't zeroize them
+  // Mitigation: Minimize exposure time, consider streaming Argon2 hashing per digit
   String _pin = '';
   String? _confirmPin;
   bool _isConfirming = false;

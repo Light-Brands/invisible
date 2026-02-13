@@ -25,15 +25,20 @@ pub struct WalletTransaction {
 /// Generate a new 12-word BIP39 mnemonic
 #[frb(sync)]
 pub fn wallet_generate_mnemonic() -> String {
-    use bip39::{Mnemonic, Language};
+    use bip39::Mnemonic;
+    use rand::RngCore;
 
-    let mnemonic = Mnemonic::generate(12).unwrap();
+    // Generate 16 bytes of entropy for 12-word mnemonic (128 bits)
+    let mut entropy = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut entropy);
+
+    let mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
     mnemonic.to_string()
 }
 
 /// Validate and restore from BIP39 mnemonic
 pub async fn wallet_restore_from_mnemonic(mnemonic: String) -> Result<bool, String> {
-    use bip39::{Mnemonic, Language};
+    use bip39::Mnemonic;
 
     Mnemonic::parse(&mnemonic)
         .map(|_| true)

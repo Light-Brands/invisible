@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'screens/conversations_screen.dart';
+import 'screens/chat_screen.dart';
+import 'screens/wallet_screen.dart';
+import 'screens/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Lock orientation to portrait
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
   
-  // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.white,
-      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
   
@@ -39,11 +39,6 @@ class InvisibleApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         fontFamily: 'Inter',
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-        ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
@@ -52,14 +47,16 @@ class InvisibleApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         fontFamily: 'Inter',
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-        ),
       ),
       themeMode: ThemeMode.system,
-      home: const SplashScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/conversations': (context) => const ConversationsScreen(),
+        '/chat': (context) => const ChatScreen(conversationId: 'temp'),
+        '/wallet': (context) => const WalletScreen(),
+        '/settings': (context) => const SettingsScreen(),
+      },
     );
   }
 }
@@ -79,13 +76,15 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeApp() async {
-    // TODO: Initialize crypto core
+    // TODO: Initialize Rust FFI
     // TODO: Check authentication status
     // TODO: Connect to relay network
     
     await Future.delayed(const Duration(seconds: 2));
     
-    // TODO: Navigate to appropriate screen
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/conversations');
+    }
   }
 
   @override
@@ -116,6 +115,8 @@ class _SplashScreenState extends State<SplashScreen> {
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
             ),
+            const SizedBox(height: 48),
+            const CircularProgressIndicator(),
           ],
         ),
       ),

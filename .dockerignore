@@ -1,0 +1,51 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Build artifacts
+target/
+**/target/
+*.so
+*.a
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+docs/
+spec/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Mobile
+mobile/
+flutter/
+android/
+ios/
+
+# Tests
+**/tests/
+integration_test/
+
+# Temporary files
+*.tmp
+*.log
+*.lock
+!Cargo.lock
+
+# Environment
+.env
+.env.local

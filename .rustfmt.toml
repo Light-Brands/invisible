@@ -1,0 +1,35 @@
+# Rust formatting configuration for Invisible
+# Security-focused, readable code style
+
+edition = "2021"
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+
+# Imports
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+reorder_imports = true
+
+# Functions
+fn_single_line = false
+where_single_line = false
+
+# Control flow
+control_brace_style = "AlwaysSameLine"
+indent_style = "Block"
+
+# Comments
+comment_width = 100
+wrap_comments = true
+normalize_comments = true
+normalize_doc_attributes = true
+
+# Formatting
+format_code_in_doc_comments = true
+format_strings = true
+format_macro_bodies = true
+
+# Misc
+use_small_heuristics = "Default"
+newline_style = "Unix"

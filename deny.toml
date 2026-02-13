@@ -1,0 +1,43 @@
+# cargo-deny configuration for security auditing
+# Run with: cargo deny check
+
+[advisories]
+# Security vulnerability scanning
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "deny"
+notice = "warn"
+
+[licenses]
+# License compliance
+unlicensed = "deny"
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+]
+deny = [
+    "GPL-3.0",
+]
+copyleft = "warn"
+
+[bans]
+# Dependency restrictions
+multiple-versions = "warn"
+wildcards = "warn"
+highlight = "all"
+
+# Deny known problematic crates
+deny = [
+    # Add problematic crates here
+]
+
+[sources]
+# Only allow crates from crates.io and git
+unknown-registry = "deny"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

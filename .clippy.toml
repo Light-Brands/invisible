@@ -1,0 +1,11 @@
+# Clippy configuration for Invisible
+# Strict linting for security-critical code
+
+# Security-focused lints
+msrv = "1.70"
+cognitive-complexity-threshold = 25
+too-many-arguments-threshold = 7
+
+# Disallow unsafe code without explicit opt-in
+# (Individual modules can override with #![allow(unsafe_code)] if justified)
+warn-on-all-wildcard-imports = true

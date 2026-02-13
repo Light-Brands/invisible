@@ -33,6 +33,7 @@ pub mod cover_traffic;
 pub mod shamir;
 pub mod temporal;
 pub mod vpn;
+pub mod camouflage;
 pub mod orchestrator;
 
 pub use error::{ScramblerError, Result};

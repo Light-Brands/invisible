@@ -94,25 +94,63 @@
 
 ---
 
-## Phase 5: Shadow Wallet + Crypto (Weeks 49-60)
+## Phase 5: Shadow Wallet + Crypto (Weeks 49-64)
 
-**Goal:** Built-in privacy-first financial layer.
+**Goal:** Built-in privacy-first financial layer with fortress-grade security.
 
-| Milestone | Description | Epic |
+### Phase 5a: Wallet Foundation + Critical Hardening (Weeks 49-52)
+
+| Milestone | Description | Epic/Doc |
 |-----------|-------------|------|
 | M5.1 | Non-custodial wallet generation + key management | [epic-10](spec/epics/epic-10-shadow-wallet.md) |
-| M5.2 | Monero integration (ring signatures, stealth addresses) | [epic-11](spec/epics/epic-11-privacy-coins.md) |
-| M5.3 | Zcash shielded + Bitcoin privacy (CoinJoin/PayJoin) | [epic-11](spec/epics/epic-11-privacy-coins.md) |
-| M5.4 | In-chat payments (send/receive/split) | [epic-10](spec/epics/epic-10-shadow-wallet.md) |
-| M5.5 | Phantom Swap — atomic cross-chain swaps (HTLC) | [epic-12](spec/epics/epic-12-phantom-swap.md) |
-| M5.6 | XMR Hop for maximum unlinkability | [epic-12](spec/epics/epic-12-phantom-swap.md) |
-| M5.7 | DeFi proxy — WalletConnect v2, anonymous RPC | [epic-13](spec/epics/epic-13-defi-proxy.md) |
+| M5.2 | **Hardware security module integration (iOS Secure Enclave, Android StrongBox)** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+| M5.3 | **Transaction verification layer (address, amount, fee, replay protection)** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+| M5.4 | **Enhanced memory protection (mlock, memory encryption, secure zeroing)** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
 
-**Deliverable:** Full crypto wallet with privacy coins, atomic swaps, anonymous DeFi access.
+**Deliverable:** Wallet foundation with hardware-protected keys and comprehensive transaction verification.
+
+### Phase 5b: Privacy Coins + User Protection (Weeks 53-56)
+
+| Milestone | Description | Epic/Doc |
+|-----------|-------------|------|
+| M5.5 | Monero integration (ring signatures, stealth addresses, subaddresses) | [epic-11](spec/epics/epic-11-privacy-coins.md) |
+| M5.6 | Zcash shielded + Bitcoin privacy (CoinJoin/PayJoin, Silent Payments) | [epic-11](spec/epics/epic-11-privacy-coins.md) |
+| M5.7 | In-chat payments (send/receive/split, timing decorrelation) | [epic-10](spec/epics/epic-10-shadow-wallet.md) |
+| M5.8 | **Anti-phishing protection (identity verification, suspicious patterns)** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+| M5.9 | **Smart contract security (approval limits, simulation, verification)** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+| M5.10 | **Multi-signature wallet coordination via messenger** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+
+**Deliverable:** Privacy coins integrated with user-facing security protections.
+
+### Phase 5c: Advanced Features + Backup (Weeks 57-60)
+
+| Milestone | Description | Epic/Doc |
+|-----------|-------------|------|
+| M5.11 | Phantom Swap — atomic cross-chain swaps (HTLC) | [epic-12](spec/epics/epic-12-phantom-swap.md) |
+| M5.12 | XMR Hop for maximum unlinkability | [epic-12](spec/epics/epic-12-phantom-swap.md) |
+| M5.13 | DeFi proxy — WalletConnect v2, anonymous RPC | [epic-13](spec/epics/epic-13-defi-proxy.md) |
+| M5.14 | **Shamir seed backup (SLIP-39) + social recovery** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+| M5.15 | **Privacy coin enhancements (Monero view keys, auto-CoinJoin, Zcash enforcement)** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+| M5.16 | **Broadcast verification + fallback mechanism** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+
+**Deliverable:** Full crypto wallet with atomic swaps, DeFi access, and advanced backup options.
+
+### Phase 5d: Defense in Depth + Testing (Weeks 61-64)
+
+| Milestone | Description | Epic/Doc |
+|-----------|-------------|------|
+| M5.17 | Ethereum + stablecoins (ZK-rollup privacy layers) | [epic-10](spec/epics/epic-10-shadow-wallet.md) |
+| M5.18 | **Side-channel attack mitigation (constant-time ops, cache protection)** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+| M5.19 | **Comprehensive wallet security testing** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+| M5.20 | **Wallet-specific security audit preparation** | [hardening](spec/architecture/shadow-wallet-hardening.md) |
+
+**Deliverable:** Fortress-grade wallet with defense-in-depth security, ready for audit.
+
+**Phase 5 Complete Deliverable:** Full crypto wallet with privacy coins, atomic swaps, anonymous DeFi access, hardware-protected keys, comprehensive transaction verification, anti-phishing protection, smart contract security, Shamir backup, and side-channel protections.
 
 ---
 
-## Phase 6: Mesh + Community Nodes (Weeks 61-72)
+## Phase 6: Mesh + Community Nodes (Weeks 65-76)
 
 **Goal:** Offline capability and decentralized infrastructure.
 
@@ -128,7 +166,7 @@
 
 ---
 
-## Phase 7: Audit + Launch (Weeks 73-84)
+## Phase 7: Audit + Launch (Weeks 77-88)
 
 **Goal:** Security audit, reproducible builds, public launch.
 
@@ -156,6 +194,7 @@ Phase 0 (Foundation) ──→ Phase 1 (Messaging) ──→ Phase 2 (Scrambler)
                                     └──────────┬───────────┘
                                                ▼
                                     Phase 5 (Shadow Wallet)
+                                    [16 weeks - includes hardening]
                                                │
                                                ▼
                                     Phase 6 (Mesh/Nodes)
@@ -163,3 +202,39 @@ Phase 0 (Foundation) ──→ Phase 1 (Messaging) ──→ Phase 2 (Scrambler)
                                                ▼
                                     Phase 7 (Audit/Launch)
 ```
+
+---
+
+## Shadow Wallet Security Hardening
+
+**Phase 5 now integrates comprehensive wallet security hardening throughout development.**
+
+The Shadow Wallet already implements the full 7-layer Scrambler protection for all financial operations (transaction fragmentation, financial cover traffic, multi-node broadcast, temporal scrambling, network isolation). Phase 5 adds critical application-layer hardening to match messenger security:
+
+### Critical (P0) - Weeks 49-52
+- **Hardware Security Module Integration** - Keys in Secure Enclave/StrongBox, never in app memory
+- **Transaction Verification Layer** - Prevents clipboard hijacking, address poisoning, replay attacks
+- **Enhanced Memory Protection** - mlock, memory encryption, secure zeroing
+
+### High Priority (P1) - Weeks 53-56
+- **Anti-Phishing Protection** - Identity verification, suspicious pattern detection
+- **Smart Contract Security** - Block unlimited approvals, transaction simulation, contract verification
+- **Multi-Signature Coordination** - Secure co-signer coordination via messenger
+
+### Medium Priority (P2) - Weeks 57-60
+- **Seed Backup Hardening** - Shamir Secret Sharing (SLIP-39), social recovery
+- **Privacy Coin Enhancements** - Monero view keys, auto-CoinJoin, Zcash shielded enforcement
+- **Broadcast Verification** - Confirm tx in mempool, fallback mechanism
+
+### Defense in Depth (P3) - Weeks 61-64
+- **Side-Channel Mitigation** - Constant-time ops, cache-timing protection
+- **Security Testing** - Comprehensive wallet security validation
+- **Audit Preparation** - Documentation and threat modeling
+
+### Documentation
+
+- **[WALLET-HARDENING-SUMMARY.md](WALLET-HARDENING-SUMMARY.md)** - Executive summary
+- **[SHADOW-WALLET-SECURITY-ANALYSIS.md](SHADOW-WALLET-SECURITY-ANALYSIS.md)** - Detailed gap analysis
+- **[spec/architecture/shadow-wallet-hardening.md](spec/architecture/shadow-wallet-hardening.md)** - Technical specifications
+
+**Result:** Wallet security will match messenger security at all layers - both network-level (already complete via Scrambler) and application-level (added through hardening).

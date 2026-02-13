@@ -31,6 +31,7 @@ rand = "0.8"
 subtle = "2.5"  # For constant-time comparisons
 zeroize = "1.8"  # For secure memory clearing
 bip39 = "2.0"
+uuid = { version = "1.0", features = ["v4"] }
 
 [build-dependencies]
 flutter_rust_bridge_codegen = "2.0"

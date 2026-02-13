@@ -28,6 +28,8 @@ argon2 = "0.5"
 totp-lite = "2.0"
 base32 = "0.4"
 rand = "0.8"
+subtle = "2.5"  # For constant-time comparisons
+zeroize = "1.8"  # For secure memory clearing
 
 [build-dependencies]
 flutter_rust_bridge_codegen = "2.0"

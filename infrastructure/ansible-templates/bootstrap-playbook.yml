@@ -1,0 +1,101 @@
+---
+# Invisible Infrastructure - Bootstrap Playbook
+# This is a starter playbook you can use to set up new nodes
+# Copy to ~/invisible-infra-ops/playbooks/00-bootstrap.yml
+
+- name: Bootstrap Invisible Relay Nodes
+  hosts: vps_nodes
+  gather_facts: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install essential packages
+      apt:
+        name:
+          - curl
+          - git
+          - vim
+          - htop
+          - tmux
+          - python3
+          - python3-pip
+          - ufw
+          - fail2ban
+          - unattended-upgrades
+          - wireguard
+          - docker.io
+          - docker-compose
+        state: present
+
+    - name: Set timezone to UTC
+      timezone:
+        name: UTC
+
+    - name: Create invisible user
+      user:
+        name: invisible
+        shell: /bin/bash
+        groups: docker
+        append: yes
+        create_home: yes
+
+    - name: Disable swap (RAM-only operation)
+      shell: |
+        swapoff -a
+        sed -i '/ swap / s/^/#/' /etc/fstab
+      args:
+        warn: false
+
+    - name: Configure SSH - disable password auth
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin prohibit-password' }
+      notify: Restart SSH
+
+    - name: Configure firewall - default deny
+      ufw:
+        state: enabled
+        policy: deny
+
+    - name: Allow SSH
+      ufw:
+        rule: allow
+        port: 22
+        proto: tcp
+
+    - name: Allow WireGuard
+      ufw:
+        rule: allow
+        port: 9100
+        proto: udp
+
+    - name: Allow relay HTTP
+      ufw:
+        rule: allow
+        port: 8080
+        proto: tcp
+
+    - name: Enable and start fail2ban
+      systemd:
+        name: fail2ban
+        enabled: yes
+        state: started
+
+    - name: Display bootstrap completion
+      debug:
+        msg: "Node {{ inventory_hostname }} bootstrapped successfully!"
+
+  handlers:
+    - name: Restart SSH
+      service:
+        name: sshd
+        state: restarted

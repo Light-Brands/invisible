@@ -1,0 +1,75 @@
+---
+# Invisible Infrastructure - Production Inventory Template
+# Copy this to ~/invisible-infra-ops/inventory/production.yml
+# Fill in actual IP addresses from your VPS providers
+
+all:
+  vars:
+    ansible_user: root
+    ansible_ssh_private_key_file: ssh-keys/infrastructure-master
+    ansible_python_interpreter: /usr/bin/python3
+    invisible_env: production
+    invisible_version: "0.1.0"
+
+  children:
+    # Entry Nodes (Layer 1)
+    entry_nodes:
+      hosts:
+        relay-entry-is-01:
+          ansible_host: YOUR_NJALLA_ICELAND_IP_HERE
+          location: iceland
+          provider: njalla
+          node_layer: 1
+          wireguard_ip: 10.20.30.1
+
+        relay-entry-nv-01:
+          ansible_host: YOUR_NJALLA_NEVIS_IP_HERE
+          location: nevis
+          provider: njalla
+          node_layer: 1
+          wireguard_ip: 10.20.30.2
+
+        relay-entry-ro-01:
+          ansible_host: YOUR_FLOKINET_ROMANIA_IP_HERE
+          location: romania
+          provider: flokinet
+          node_layer: 1
+          wireguard_ip: 10.20.30.3
+
+      vars:
+        node_type: entry
+        relay_role: ingress
+
+    # Exit Nodes (Layer 5)
+    exit_nodes:
+      hosts:
+        relay-exit-is-01:
+          ansible_host: YOUR_NJALLA_ICELAND_EXIT_IP_HERE
+          location: iceland
+          provider: njalla
+          node_layer: 5
+          wireguard_ip: 10.20.30.100
+
+        relay-exit-se-01:
+          ansible_host: YOUR_NJALLA_SWEDEN_IP_HERE
+          location: sweden
+          provider: njalla
+          node_layer: 5
+          wireguard_ip: 10.20.30.101
+
+        relay-exit-fi-01:
+          ansible_host: YOUR_FLOKINET_FINLAND_IP_HERE
+          location: finland
+          provider: flokinet
+          node_layer: 5
+          wireguard_ip: 10.20.30.102
+
+      vars:
+        node_type: exit
+        relay_role: egress
+
+    # Logical groupings
+    vps_nodes:
+      children:
+        entry_nodes:
+        exit_nodes:

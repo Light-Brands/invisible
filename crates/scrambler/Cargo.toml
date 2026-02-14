@@ -29,6 +29,11 @@ anyhow = { workspace = true }
 # Utilities
 rand = "0.8"
 chrono = "0.4"
+base64 = "0.22"
+hex = "0.4"
+
+# Shamir Secret Sharing
+sharks = "0.5"
 
 # Logging
 tracing = { workspace = true }

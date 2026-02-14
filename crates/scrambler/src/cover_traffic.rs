@@ -37,19 +37,56 @@ impl CoverTrafficGenerator {
     }
 
     /// Generate a cover packet
+    ///
+    /// Creates a realistic-looking Sphinx packet that is indistinguishable from real traffic.
+    /// Uses random routing, realistic payload sizes, and proper Sphinx construction.
     pub fn generate_cover_packet(&self) -> Result<SphinxPacket> {
-        // TODO: Generate realistic cover traffic
-        // - Random destination
-        // - Random payload size
-        // - Indistinguishable from real traffic
-        Ok(SphinxPacket {
-            header: crate::sphinx::SphinxHeader {
-                ephemeral_key: [0u8; 32],
-                routing_info: vec![],
-                mac: [0u8; 32],
-            },
-            payload: vec![],
-        })
+        use rand::Rng;
+        use crate::sphinx::{RouteSpec, build_packet, MAX_HOPS};
+
+        // Generate random route through mix nodes (3-5 hops)
+        let num_hops = rand::thread_rng().gen_range(3..=MAX_HOPS);
+        let mut node_keys = Vec::new();
+
+        for _ in 0..num_hops {
+            let mut key = vec![0u8; 32];
+            rand::thread_rng().fill(&mut key[..]);
+            node_keys.push(key);
+        }
+
+        // Random destination address (32 bytes)
+        let mut destination = vec![0u8; 32];
+        rand::thread_rng().fill(&mut destination[..]);
+
+        let route = RouteSpec {
+            node_keys,
+            destination,
+        };
+
+        // Generate realistic payload size distribution
+        // Most messages are small (100-500 bytes), some larger (up to 2KB)
+        let payload_size = if rand::thread_rng().gen_bool(0.8) {
+            // 80% small messages
+            rand::thread_rng().gen_range(100..500)
+        } else {
+            // 20% larger messages
+            rand::thread_rng().gen_range(500..2048)
+        };
+
+        // Generate random payload data
+        let mut payload = vec![0u8; payload_size];
+        rand::thread_rng().fill(&mut payload[..]);
+
+        // Build proper Sphinx packet
+        let packet = build_packet(&route, &payload)?;
+
+        tracing::debug!(
+            hops = num_hops,
+            payload_size = payload_size,
+            "Generated cover traffic packet"
+        );
+
+        Ok(packet)
     }
 
     /// Calculate delay until next cover packet
@@ -72,6 +109,54 @@ mod tests {
     fn test_cover_traffic_generation() {
         let gen = CoverTrafficGenerator::new(CoverTrafficConfig::default());
         let packet = gen.generate_cover_packet().unwrap();
-        assert!(!packet.payload.is_empty() || packet.payload.is_empty()); // Placeholder test
+
+        // Verify packet has non-empty payload (realistic cover traffic)
+        assert!(!packet.payload.is_empty(), "Cover packet should have payload");
+
+        // Verify payload is within realistic size range
+        assert!(packet.payload.len() >= 100, "Payload too small");
+        assert!(packet.payload.len() <= 2048, "Payload too large");
+
+        // Verify header structure is valid
+        assert_eq!(packet.header.ephemeral_key.len(), 32, "Invalid ephemeral key size");
+        assert!(!packet.header.routing_info.is_empty(), "Routing info should not be empty");
+        assert_eq!(packet.header.mac.len(), 32, "Invalid MAC size");
+    }
+
+    #[test]
+    fn test_cover_traffic_timing() {
+        let config = CoverTrafficConfig {
+            rate: 10.0,
+            jitter: 0.1,
+        };
+        let gen = CoverTrafficGenerator::new(config);
+
+        // Test that delays are within expected range
+        for _ in 0..100 {
+            let delay = gen.next_delay();
+            let delay_secs = delay.as_secs_f64();
+
+            // Base delay is 1/rate = 0.1s
+            // With 10% jitter, should be between 0.09 and 0.11s
+            assert!(delay_secs >= 0.09 && delay_secs <= 0.11,
+                "Delay {} outside expected range", delay_secs);
+        }
+    }
+
+    #[test]
+    fn test_cover_traffic_indistinguishability() {
+        let gen = CoverTrafficGenerator::new(CoverTrafficConfig::default());
+
+        // Generate multiple packets and verify they're different
+        let packet1 = gen.generate_cover_packet().unwrap();
+        let packet2 = gen.generate_cover_packet().unwrap();
+
+        // Different packets should have different ephemeral keys
+        assert_ne!(packet1.header.ephemeral_key, packet2.header.ephemeral_key,
+            "Cover packets should have different ephemeral keys");
+
+        // Different packets should have different payloads
+        assert_ne!(packet1.payload, packet2.payload,
+            "Cover packets should have different payloads");
     }
 }

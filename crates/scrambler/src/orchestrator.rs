@@ -12,8 +12,10 @@
 use std::time::Duration;
 
 use crate::cover_traffic::{CoverTrafficConfig, CoverTrafficGenerator};
+use crate::dead_drop::{DeadDropConfig};
 use crate::error::{Result, ScramblerError};
 use crate::mixnet::{select_route, Jurisdiction, MixNode};
+use crate::network::{MixNodeAddr, NetworkConfig, PacketTransmitter, ResponseCollector};
 use crate::shamir::{split_secret, reconstruct_secret, ShamirConfig};
 use crate::sphinx::{build_packet, RouteSpec};
 use crate::temporal::{TemporalConfig, TemporalDelayGenerator};
@@ -30,6 +32,10 @@ pub struct ScramblerConfig {
     pub cover_traffic: CoverTrafficConfig,
     /// Temporal delay (Layer 7)
     pub temporal: TemporalConfig,
+    /// Network transmission
+    pub network: NetworkConfig,
+    /// Dead drop configuration
+    pub dead_drop: DeadDropConfig,
     /// Avoid specific jurisdictions
     pub avoid_jurisdiction: Option<Jurisdiction>,
 }
@@ -57,6 +63,8 @@ impl Default for ScramblerConfig {
             shamir: ShamirConfig::default(),
             cover_traffic: CoverTrafficConfig::default(),
             temporal: TemporalConfig::default(),
+            network: NetworkConfig::default(),
+            dead_drop: DeadDropConfig::default(),
             avoid_jurisdiction: Some(Jurisdiction::FiveEyes),
         }
     }
@@ -77,6 +85,10 @@ pub struct Scrambler {
     temporal: TemporalDelayGenerator,
     /// Available mix nodes (Layer 2)
     mix_nodes: Vec<MixNode>,
+    /// Network packet transmitter
+    packet_transmitter: PacketTransmitter,
+    /// RPC response collector
+    response_collector: ResponseCollector,
 }
 
 impl Scrambler {
@@ -85,6 +97,12 @@ impl Scrambler {
         let vpn = VpnManager::new(config.vpn.clone());
         let cover_traffic = CoverTrafficGenerator::new(config.cover_traffic.clone());
         let temporal = TemporalDelayGenerator::new(config.temporal.clone());
+        let packet_transmitter = PacketTransmitter::new(config.network.clone());
+        let response_collector = ResponseCollector::new(
+            config.network.clone(),
+            config.dead_drop.clone(),
+            config.shamir.clone(),
+        );
 
         Self {
             config,
@@ -92,6 +110,8 @@ impl Scrambler {
             cover_traffic,
             temporal,
             mix_nodes,
+            packet_transmitter,
+            response_collector,
         }
     }
 
@@ -102,8 +122,22 @@ impl Scrambler {
         // Connect to VPN (Layer 0)
         self.vpn.connect().await?;
 
-        // TODO: Start cover traffic generation
-        // TODO: Start maintenance loop
+        tracing::info!("VPN connected, scrambler initialized");
+
+        // Note: Background tasks like cover traffic and maintenance should be
+        // spawned by the caller using the maintain() method in a loop.
+        // This keeps the API simple and gives caller control over task lifecycle.
+        //
+        // Example usage:
+        //   scrambler.initialize().await?;
+        //   tokio::spawn(async move {
+        //       loop {
+        //           if let Err(e) = scrambler.maintain().await {
+        //               tracing::error!("Maintenance error: {}", e);
+        //           }
+        //           tokio::time::sleep(Duration::from_secs(30)).await;
+        //       }
+        //   });
 
         Ok(())
     }
@@ -206,19 +240,167 @@ impl Scrambler {
         Ok(message)
     }
 
+    /// Route RPC call through Scrambler (Privacy Parity for Wallet Operations)
+    ///
+    /// Routes blockchain RPC requests through the full 8-layer Scrambler stack,
+    /// ensuring wallet queries have the same privacy as messages.
+    ///
+    /// # Arguments
+    /// * `rpc_request` - Serialized RPC request (JSON-RPC usually)
+    /// * `destination` - Destination node public key (blockchain node)
+    ///
+    /// # Returns
+    /// * `Vec<u8>` - RPC response from destination
+    pub async fn route_rpc_call(
+        &mut self,
+        rpc_request: &[u8],
+        destination: &[u8],
+    ) -> Result<Vec<u8>> {
+        // Ensure VPN is connected
+        if !self.vpn.is_connected() {
+            return Err(ScramblerError::VpnError(
+                "VPN not connected - cannot route RPC".to_string(),
+            ));
+        }
+
+        tracing::info!(
+            request_size = rpc_request.len(),
+            "Routing RPC call through Scrambler"
+        );
+
+        // Layer 1: Fragment RPC request using Shamir secret sharing
+        // This prevents any single node from seeing the full request
+        let shares = split_secret(rpc_request, &self.config.shamir)?;
+
+        // Layer 2: Route each share through different mixnet paths
+        // This provides path diversity and timing obfuscation
+        let mut packet_handles = Vec::new();
+        let mut access_tokens = Vec::new();
+        let mut drop_nodes = Vec::new();
+
+        for share in shares.iter() {
+            // Select independent route for this share
+            let route = select_route(&self.mix_nodes, self.config.avoid_jurisdiction)?;
+
+            // Create route specification
+            let route_spec = RouteSpec {
+                node_keys: route.iter().map(|node| node.public_key.clone()).collect(),
+                destination: destination.to_vec(),
+            };
+
+            // Wrap in Sphinx packet
+            let packet = build_packet(&route_spec, &share.data)?;
+
+            // Layer 7: Apply temporal delay
+            let delay = self.temporal.generate_delay();
+
+            // Prepare dead drop for response
+            // Derive access token from share data
+            let access_token = self.response_collector.dead_drop.derive_access_token(
+                &share.data
+            );
+
+            access_tokens.push(access_token);
+
+            // Use last node in route as dead drop node
+            if let Some(last_node) = route.last() {
+                drop_nodes.push(MixNodeAddr {
+                    address: last_node.address.clone(),
+                    public_key: last_node.public_key.clone(),
+                });
+            } else {
+                return Err(ScramblerError::NetworkError(
+                    "Empty route selected".to_string()
+                ));
+            }
+
+            packet_handles.push((packet, route, delay));
+
+            tracing::debug!(
+                share_index = share.index,
+                delay_ms = delay.as_millis(),
+                "RPC share routed"
+            );
+        }
+
+        // Step 1: Send packets with temporal delays
+        for (packet, route, delay) in packet_handles {
+            // Apply temporal delay
+            tokio::time::sleep(delay).await;
+
+            // Send packet through first hop
+            if let Some(first_node) = route.first() {
+                let node_addr = MixNodeAddr {
+                    address: first_node.address.clone(),
+                    public_key: first_node.public_key.clone(),
+                };
+
+                self.packet_transmitter.send_packet(&packet, &node_addr).await?;
+
+                tracing::debug!(
+                    first_hop = %first_node.address,
+                    "RPC share packet transmitted"
+                );
+            } else {
+                return Err(ScramblerError::NetworkError(
+                    "Empty route - cannot send packet".to_string()
+                ));
+            }
+        }
+
+        // Step 2: Collect responses from dead drops
+        // Maximum wait time: 30 seconds for all shares to arrive
+        let max_wait = Duration::from_secs(30);
+
+        let response = self.response_collector.collect_response(
+            &access_tokens,
+            &drop_nodes,
+            max_wait,
+        ).await?;
+
+        tracing::info!(
+            response_size = response.len(),
+            shares = access_tokens.len(),
+            "RPC response collected and reconstructed"
+        );
+
+        Ok(response)
+    }
+
     /// Generate cover traffic
     ///
     /// Should be called periodically to maintain constant-rate traffic.
     pub async fn generate_cover_traffic(&self) -> Result<()> {
-        let _packet = self.cover_traffic.generate_cover_packet()?;
+        use rand::seq::SliceRandom;
+
+        let packet = self.cover_traffic.generate_cover_packet()?;
         let delay = self.cover_traffic.next_delay();
 
-        tracing::debug!(
-            delay_ms = delay.as_millis(),
-            "Cover traffic generated"
-        );
+        // Select a random mix node to send cover traffic through
+        if let Some(node) = self.mix_nodes.choose(&mut rand::thread_rng()) {
+            let node_addr = MixNodeAddr {
+                address: node.address.clone(),
+                public_key: node.public_key.clone(),
+            };
 
-        // TODO: Actually send the cover packet
+            // Send cover packet (errors are logged but don't stop cover traffic)
+            match self.packet_transmitter.send_packet(&packet, &node_addr).await {
+                Ok(_) => {
+                    tracing::debug!(
+                        node = %hex::encode(&node.id[0..8]),
+                        delay_ms = delay.as_millis(),
+                        "Cover traffic packet sent"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        error = %e,
+                        "Failed to send cover traffic packet (non-critical)"
+                    );
+                }
+            }
+        }
+
         tokio::time::sleep(delay).await;
 
         Ok(())
@@ -302,6 +484,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore] // Requires WireGuard installed and sudo privileges
     async fn test_scrambler_initialization() {
         let config = ScramblerConfig::default();
         let nodes = create_test_nodes();
@@ -313,6 +496,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore] // Requires WireGuard installed and sudo privileges
     async fn test_message_fragmentation() {
         let config = ScramblerConfig::default();
         let nodes = create_test_nodes();

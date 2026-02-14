@@ -17,9 +17,12 @@ zeroize = { workspace = true }
 
 # Bitcoin
 bitcoin = "0.31"
+bitcoincore-rpc = "0.18"
 
-# Monero (placeholder - actual monero crate would go here)
-# monero = "0.20"
+# Monero
+monero = "0.20"
+# TODO: Add monero-rpc when ready for full integration
+# monero-rpc = "0.5"
 
 # Serialization
 serde = { workspace = true }
@@ -39,6 +42,10 @@ tracing = { workspace = true }
 # Utilities
 rand = "0.8"
 hex = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+bip39 = "2.0"
+reqwest = { version = "0.12", features = ["json"] }
+sha3 = "0.10"  # Keccak256 for Ethereum addresses
 
 [dev-dependencies]
 tokio-test = "0.4"

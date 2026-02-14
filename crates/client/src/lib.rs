@@ -26,6 +26,8 @@ pub mod messages;
 pub mod calls;
 pub mod sync;
 pub mod error;
+pub mod dashboard;
 
 pub use client::InvisibleClient;
 pub use error::{ClientError, Result};
+pub use dashboard::{ServiceDashboard, HealthStatus, ServiceStatus};
